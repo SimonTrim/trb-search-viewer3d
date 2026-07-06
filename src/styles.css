@@ -1,0 +1,91 @@
+@import '@trimble-oss/moduswebcomponents/modus-wc-styles.css';
+
+:root {
+  color-scheme: light;
+  font-family: 'Open Sans', 'Segoe UI', Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--modus-wc-color-trimble-blue-pale, #f3f6f9);
+  color: var(--modus-wc-color-gray-10, #171c1e);
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 8px;
+}
+
+.search-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 280px;
+}
+
+.search-panel__header {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.search-panel__loading {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 24px 0;
+}
+
+.search-bar {
+  display: grid;
+  gap: 12px;
+}
+
+.search-bar__row {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+}
+
+.search-bar__row--primary {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.9fr);
+}
+
+.search-bar__row--actions {
+  grid-template-columns: minmax(120px, 0.9fr) auto;
+}
+
+.search-bar__text,
+.search-bar__property,
+.search-bar__match-mode,
+.search-bar__submit,
+.search-bar__case {
+  width: 100%;
+}
+
+.toast-host {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.toast-host__item {
+  pointer-events: auto;
+}
+
+@media (max-width: 420px) {
+  .search-bar__row--primary,
+  .search-bar__row--actions {
+    grid-template-columns: 1fr;
+  }
+}

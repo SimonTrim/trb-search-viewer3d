@@ -1,0 +1,10 @@
+{
+  "idfmIdentifiant": {
+    "setName": "IDFM_IDENTIFIANT",
+    "properties": {
+      "thematique": "THEMATIQUE",
+      "categorie": "CATEGORIE",
+      "typeObjet": "TYPE_OBJET"
+    }
+  }
+}
