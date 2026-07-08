@@ -15,6 +15,7 @@ Extension panneau latéral pour rechercher et identifier visuellement des élém
 | GitHub | https://github.com/SimonTrim/trb-search-viewer3d |
 | Vercel (production) | https://trb-search-viewer3d.vercel.app |
 | Manifest TC | https://trb-search-viewer3d.vercel.app/manifest.json |
+| Icône extension | https://trb-search-viewer3d.vercel.app/icon-48.png |
 
 ## Développement local
 
