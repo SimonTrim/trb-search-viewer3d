@@ -8,7 +8,7 @@
       "id": "trb-recherche-elements-3d",
       "title": "Recherche d'éléments",
       "icon": "https://trb-search-viewer3d.vercel.app/icon-48.png",
-      "url": "https://trb-search-viewer3d.vercel.app/index.html",
+      "url": "https://trb-search-viewer3d.vercel.app/",
       "description": "Recherche et identification visuelle d'éléments BIM dans le Viewer 3D"
     }
   ],

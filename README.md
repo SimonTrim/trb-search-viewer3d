@@ -42,6 +42,17 @@ npm run preview
 3. Manifest : https://trb-search-viewer3d.vercel.app/manifest.json
 4. Dans Trimble Connect : **Paramètres → Extensions → Ajouter** → URL du manifest
 
+### Réinstaller l'extension après mise à jour du manifest
+
+Trimble Connect met en cache la configuration au moment de l'ajout. Si le panneau affiche le JSON du manifest au lieu de l'interface :
+
+1. **Paramètres du projet → Extensions** : supprimer « Recherche d'éléments »
+2. Réajouter avec `https://trb-search-viewer3d.vercel.app/manifest.json`
+3. Activer l'extension, rouvrir le Viewer 3D
+4. Vérifier que l'URL chargée est `https://trb-search-viewer3d.vercel.app/` (pas `manifest.json`)
+
+L'icône doit faire ~48×48 px (fichier léger). Une icône trop lourde peut provoquer un carré bleu à la place de l'image.
+
 ## Structure
 
 - `src/components/SearchBar.tsx` — zone de recherche Modus
