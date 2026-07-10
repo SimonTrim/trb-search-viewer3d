@@ -1,6 +1,15 @@
 {
-  "title": "Recherche d'éléments",
-  "icon": "https://trb-search-viewer3d.vercel.app/icon-48.png",
-  "url": "https://trb-search-viewer3d.vercel.app/",
-  "description": "Recherche et identification visuelle d'éléments BIM dans le Viewer 3D"
+  "name": "Recherche d'éléments",
+  "version": "0.1.0",
+  "api": "1.0",
+  "extensions": [
+    {
+      "type": "viewerModule",
+      "id": "trb-recherche-elements-3d",
+      "title": "Recherche d'éléments",
+      "icon": "https://trb-search-viewer3d.vercel.app/icon-48.png",
+      "url": "https://trb-search-viewer3d.vercel.app/"
+    }
+  ],
+  "permissions": ["project.read", "files.read", "views.read"]
 }
