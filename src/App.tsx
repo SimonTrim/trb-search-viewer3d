@@ -36,23 +36,24 @@ export default function App() {
     <>
       <main className="app-shell">
         <ModusWcCard className="search-panel" padding="comfortable">
+          {/* Les branches restent montées (hidden) : démonter des enfants slottés
+              dans un hôte Modus provoque NotFoundError removeChild avec React. */}
           <header className="search-panel__header">
             <ModusWcTypography hierarchy="h3" label="Recherche d'éléments" />
-            {isMockMode && (
+            <div hidden={!isMockMode}>
               <ModusWcAlert variant="info" alertTitle="Mode développement">
                 {error ?? 'Workspace API non disponible — interface testable hors Trimble Connect.'}
               </ModusWcAlert>
-            )}
+            </div>
           </header>
 
-          {isBusy ? (
-            <div className="search-panel__loading">
-              <ModusWcLoader />
-              <ModusWcTypography hierarchy="p" label="Connexion au viewer…" />
-            </div>
-          ) : (
+          <div className="search-panel__loading" hidden={!isBusy}>
+            <ModusWcLoader />
+            <ModusWcTypography hierarchy="p" label="Connexion au viewer…" />
+          </div>
+          <div hidden={isBusy}>
             <SearchBar onSearch={handleSearch} disabled={!models.length && !isMockMode} />
-          )}
+          </div>
         </ModusWcCard>
       </main>
 

@@ -9,6 +9,11 @@
   box-sizing: border-box;
 }
 
+/* L'attribut hidden doit primer sur les display des classes utilitaires */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body,
 #root {
