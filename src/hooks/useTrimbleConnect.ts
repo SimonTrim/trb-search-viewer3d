@@ -146,6 +146,7 @@ function useProvideTrimbleConnect(): TrimbleContextValue {
       try {
         let apiRef: TrimbleAPI | null = null;
 
+        console.log('[RechercheElements] Connexion au Workspace API…');
         const api = (await sdk.connect(window.parent, async (event: string, data: unknown) => {
           if (!apiRef) return;
 
@@ -171,17 +172,19 @@ function useProvideTrimbleConnect(): TrimbleContextValue {
         }, 30000)) as TrimbleAPI;
 
         apiRef = api;
+        console.log('[RechercheElements] Connecté. Lecture projet + modèles…');
 
-        const [project, permission, snapshot] = await Promise.all([
+        const [project, snapshot] = await Promise.all([
           api.project.getCurrentProject(),
-          api.extension.requestPermission('accesstoken'),
           readViewerSnapshot(api),
         ]);
+        console.log(
+          `[RechercheElements] Projet: ${project?.name ?? '?'} — ${snapshot.models.length} modèle(s) chargé(s)`,
+        );
 
         updateIfMounted({
           api,
           project,
-          accessToken: permission !== 'pending' && permission !== 'denied' ? permission : null,
           selection: snapshot.selection,
           models: snapshot.models,
           isConnected: true,
@@ -190,7 +193,22 @@ function useProvideTrimbleConnect(): TrimbleContextValue {
           isBusy: false,
           error: null,
         });
+
+        // La demande de permission peut rester en attente d'une action utilisateur :
+        // elle ne doit pas bloquer l'affichage de l'interface.
+        api.extension
+          .requestPermission('accesstoken')
+          .then((permission) => {
+            console.log('[RechercheElements] Permission accesstoken:', permission);
+            if (permission !== 'pending' && permission !== 'denied') {
+              updateIfMounted({ accessToken: permission });
+            }
+          })
+          .catch((permissionError: unknown) => {
+            console.warn('[RechercheElements] requestPermission en échec:', permissionError);
+          });
       } catch (error) {
+        console.error('[RechercheElements] Échec de connexion:', error);
         updateIfMounted({
           api: null,
           project: MOCK_PROJECT,
