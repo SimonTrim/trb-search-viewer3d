@@ -50,6 +50,38 @@ body {
   padding: 24px 0;
 }
 
+.search-panel__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.search-panel__results {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.results-table {
+  display: grid;
+  gap: 8px;
+}
+
+.results-table__grid {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.viewer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
 .search-bar {
   display: grid;
   gap: 12px;
