@@ -6,14 +6,12 @@ export const HIGHLIGHT_COLOR = '#E9190F';
 export const HIGHLIGHT_WARN_THRESHOLD = 1000;
 
 /**
- * En dessous de cette diagonale (en mètres), le "zoom to fit" natif place la
- * caméra trop près (l'objet est coupé par le near-plane et semble masqué) :
- * on cadre alors manuellement avec du recul.
- * Cas typique : terminaux Nova plats ou quasi ponctuels (Volume 0, IsSolid 0).
+ * En dessous de cette diagonale (en mètres), le "zoom to fit" natif risque de
+ * placer la caméra dans l'objet : on cadre manuellement avec du recul.
  */
-const MIN_FIT_DIAGONAL_M = 5;
+const MIN_FIT_DIAGONAL_M = 1;
 
-/** Recul minimal de la caméra pour les objets ponctuels (en mètres). */
+/** Recul minimal de la caméra pour les objets plats ou ponctuels (en mètres). */
 const MIN_CAMERA_DISTANCE_M = 3;
 
 interface BoundingBox {
@@ -54,6 +52,10 @@ async function fitCameraToObjects(
         result.filter((box): box is BoundingBox => Boolean(box?.min && box?.max)),
       );
     }
+    console.log(
+      `[RechercheElements] Bounding boxes: ${boxes.length}`,
+      JSON.stringify(boxes.slice(0, 4)),
+    );
   } catch (boxError) {
     console.warn('[RechercheElements] getObjectBoundingBoxes indisponible:', boxError);
   }
@@ -119,9 +121,13 @@ function groupByModel(results: SearchResult[]): ModelObjectIds[] {
     ids.push(result.runtimeId);
     byModel.set(result.modelId, ids);
   }
+  // recursive: true — les objets composites (ex. terminaux Nova) portent leur
+  // géométrie dans des entités enfants ; sans ce flag, couleur et visibilité
+  // ne s'appliquent qu'au parent et rien ne s'affiche.
   return Array.from(byModel.entries(), ([modelId, objectRuntimeIds]) => ({
     modelId,
     objectRuntimeIds,
+    recursive: true,
   }));
 }
 
@@ -158,7 +164,9 @@ export async function highlightResults(
 
 /** Sélectionne un élément unique et zoome dessus (clic sur une ligne de résultat). */
 export async function zoomToResult(api: TrimbleAPI, result: SearchResult): Promise<void> {
-  const modelObjectIds = [{ modelId: result.modelId, objectRuntimeIds: [result.runtimeId] }];
+  const modelObjectIds = [
+    { modelId: result.modelId, objectRuntimeIds: [result.runtimeId], recursive: true },
+  ];
   await api.viewer.setSelection({ modelObjectIds }, 'set');
   await fitCameraToObjects(api, modelObjectIds, 400);
 }
