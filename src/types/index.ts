@@ -97,6 +97,18 @@ export interface ViewerObjectSelector {
   modelObjectIds?: ModelObjectIds[];
 }
 
+export interface ViewerCamera {
+  position: Vector3;
+  target: Vector3;
+  up?: Vector3;
+}
+
+export interface ObjectBoundingBox {
+  runtimeId?: number;
+  min: Vector3;
+  max: Vector3;
+}
+
 export interface TrimbleViewerAPI {
   getModels: (filter?: string) => Promise<unknown[]>;
   getObjects: (selector?: ViewerObjectSelector, state?: ViewerObjectState) => Promise<unknown[]>;
@@ -105,7 +117,12 @@ export interface TrimbleViewerAPI {
   getObjectProperties: (modelId: string, ids: number[]) => Promise<unknown[]>;
   setObjectState: (selector: unknown, state: ViewerObjectState) => Promise<void>;
   isolateEntities: (entities: unknown[]) => Promise<void>;
+  getCamera: () => Promise<ViewerCamera>;
   setCamera: (target: unknown, options?: Record<string, unknown>) => Promise<void>;
+  getObjectBoundingBoxes: (
+    modelId: string,
+    objectRuntimeIds: number[],
+  ) => Promise<ObjectBoundingBox[]>;
   setOpacity: (opacity: number) => Promise<void>;
   reset: () => Promise<void>;
 }
