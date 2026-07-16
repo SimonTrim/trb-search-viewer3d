@@ -14,6 +14,12 @@
   display: none !important;
 }
 
+/* Masquage piloté par React : ne pas utiliser l'attribut hidden, que
+   Stencil/Modus manipule lui-même sur les enfants slottés. */
+.u-hidden {
+  display: none !important;
+}
+
 html,
 body,
 #root {

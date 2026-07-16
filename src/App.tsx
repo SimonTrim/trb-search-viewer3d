@@ -40,6 +40,10 @@ export default function App() {
     clearIndex();
   }, [models]);
 
+  useEffect(() => {
+    console.log(`[RechercheElements] isBusy=${isBusy} isMockMode=${isMockMode} models=${models.length}`);
+  }, [isBusy, isMockMode, models]);
+
   const handleSearch = useCallback(
     async (query: SearchQuery) => {
       if (isMockMode || !api) {
@@ -153,36 +157,38 @@ export default function App() {
     <>
       <main className="app-shell">
         <ModusWcCard className="search-panel" padding="comfortable">
-          {/* Les branches restent montées (hidden) : démonter des enfants slottés
-              dans un hôte Modus provoque NotFoundError removeChild avec React. */}
+          {/* Les branches restent montées : démonter des enfants slottés dans un
+              hôte Modus provoque NotFoundError removeChild avec React. La visibilité
+              est pilotée par la classe u-hidden (l'attribut hidden est manipulé par
+              Stencil/Modus sur les enfants slottés et ne serait pas fiable). */}
           <header className="search-panel__header">
             <ModusWcTypography hierarchy="h3" label="Recherche d'éléments" />
-            <div hidden={!isMockMode}>
+            <div className={isMockMode ? undefined : 'u-hidden'}>
               <ModusWcAlert variant="info" alertTitle="Mode développement">
                 {error ?? 'Workspace API non disponible — interface testable hors Trimble Connect.'}
               </ModusWcAlert>
             </div>
           </header>
 
-          <div className="search-panel__loading" hidden={!isBusy}>
+          <div className={`search-panel__loading${isBusy ? '' : ' u-hidden'}`}>
             <ModusWcLoader />
             <ModusWcTypography hierarchy="p" label="Connexion au viewer…" />
           </div>
 
-          <div hidden={isBusy}>
+          <div className={isBusy ? 'u-hidden' : undefined}>
             <SearchBar
               onSearch={handleSearch}
               disabled={!models.length && !isMockMode}
               loading={working}
             />
 
-            <div className="search-panel__status" hidden={!working}>
+            <div className={`search-panel__status${working ? '' : ' u-hidden'}`}>
               <ModusWcLoader size="sm" />
               <ModusWcTypography hierarchy="p" label={statusLabel} />
             </div>
 
-            <div className="search-panel__results" hidden={!hasSearched || working}>
-              <div hidden={results.length === 0}>
+            <div className={`search-panel__results${hasSearched && !working ? '' : ' u-hidden'}`}>
+              <div className={results.length > 0 ? undefined : 'u-hidden'}>
                 <ResultsTable
                   results={results}
                   multiModel={models.length > 1}
@@ -195,7 +201,7 @@ export default function App() {
                   disabled={working}
                 />
               </div>
-              <div hidden={results.length > 0}>
+              <div className={results.length === 0 ? undefined : 'u-hidden'}>
                 <ModusWcAlert variant="info" alertTitle="Aucun résultat">
                   Aucun élément ne correspond à votre recherche.
                 </ModusWcAlert>

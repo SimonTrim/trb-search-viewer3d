@@ -24,7 +24,7 @@ export interface HighlightOptions {
 
 /**
  * Met en évidence les résultats dans le viewer (ordre imposé par le PRD) :
- * sélection → colorisation rouge → isolation optionnelle.
+ * sélection → colorisation rouge → isolation optionnelle → cadrage caméra.
  */
 export async function highlightResults(
   api: TrimbleAPI,
@@ -39,8 +39,14 @@ export async function highlightResults(
   await api.viewer.setObjectState({ modelObjectIds }, { color: HIGHLIGHT_COLOR });
 
   if (options.isolate) {
-    await api.viewer.isolateEntities([{ modelObjectIds }]);
+    // isolateEntities attend des entityIds externes (pas des runtime IDs) :
+    // on isole via setObjectState, qui accepte le même ObjectSelector.
+    await api.viewer.setObjectState(undefined, { visible: false });
+    await api.viewer.setObjectState({ modelObjectIds }, { visible: true });
   }
+
+  // Cadre la caméra sur l'ensemble des résultats pour qu'ils soient visibles.
+  await api.viewer.setCamera({ modelObjectIds }, { animationTime: 600 });
 }
 
 /** Sélectionne un élément unique et zoome dessus (clic sur une ligne de résultat). */
@@ -49,14 +55,12 @@ export async function zoomToResult(api: TrimbleAPI, result: SearchResult): Promi
     modelObjectIds: [{ modelId: result.modelId, objectRuntimeIds: [result.runtimeId] }],
   };
   await api.viewer.setSelection(selector, 'set');
-  await api.viewer.setCamera(
-    { modelId: result.modelId, objectRuntimeIds: [result.runtimeId] },
-    { animationTime: 400 },
-  );
+  // setCamera accepte un ObjectSelector ({ modelObjectIds }) pour cadrer les objets.
+  await api.viewer.setCamera(selector, { animationTime: 400 });
 }
 
 /** Restaure visibilité, couleurs et opacité du viewer. */
 export async function resetViewer(api: TrimbleAPI): Promise<void> {
-  await api.viewer.setObjectState(undefined, { visible: 'reset', color: null });
+  await api.viewer.setObjectState(undefined, { visible: 'reset', color: 'reset' });
   await api.viewer.setOpacity(100);
 }
