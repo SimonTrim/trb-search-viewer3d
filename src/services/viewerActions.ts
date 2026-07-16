@@ -121,14 +121,71 @@ function groupByModel(results: SearchResult[]): ModelObjectIds[] {
     ids.push(result.runtimeId);
     byModel.set(result.modelId, ids);
   }
-  // recursive: true — les objets composites (ex. terminaux Nova) portent leur
-  // géométrie dans des entités enfants ; sans ce flag, couleur et visibilité
-  // ne s'appliquent qu'au parent et rien ne s'affiche.
   return Array.from(byModel.entries(), ([modelId, objectRuntimeIds]) => ({
     modelId,
     objectRuntimeIds,
-    recursive: true,
   }));
+}
+
+interface RawModelObjects {
+  modelId?: string;
+  objects?: Array<{ id?: number }>;
+}
+
+/**
+ * Les objets composites (ex. terminaux Nova) ne portent pas la géométrie :
+ * elle appartient à des entités enfants (getObjectBoundingBoxes renvoie 0 boîte
+ * pour les parents). On résout donc explicitement toute la descendance, via la
+ * hiérarchie (assemblages, conteneurs, groupes) et getObjects récursif.
+ */
+async function expandWithDescendants(
+  api: TrimbleAPI,
+  modelObjectIds: ModelObjectIds[],
+): Promise<ModelObjectIds[]> {
+  const expanded: ModelObjectIds[] = [];
+
+  for (const group of modelObjectIds) {
+    const baseIds = group.objectRuntimeIds ?? [];
+    const ids = new Set(baseIds);
+
+    // HierarchyType: 4 = ElementAssembly, 3 = Containment, 5 = Group.
+    for (const hierarchyType of [4, 3, 5]) {
+      try {
+        const children = await api.viewer.getHierarchyChildren(
+          group.modelId,
+          baseIds,
+          hierarchyType,
+          true,
+        );
+        for (const child of children ?? []) {
+          if (typeof child.id === 'number') ids.add(child.id);
+        }
+      } catch {
+        // Type de hiérarchie non supporté pour ces objets : on continue.
+      }
+    }
+
+    try {
+      const raw = (await api.viewer.getObjects({
+        modelObjectIds: [{ ...group, recursive: true }],
+      })) as RawModelObjects[];
+      for (const entry of raw ?? []) {
+        if (entry.modelId && entry.modelId !== group.modelId) continue;
+        for (const object of entry.objects ?? []) {
+          if (typeof object.id === 'number') ids.add(object.id);
+        }
+      }
+    } catch {
+      // getObjects avec sélecteur non supporté : on garde la hiérarchie.
+    }
+
+    console.log(
+      `[RechercheElements] Descendants: ${baseIds.length} parent(s) → ${ids.size} entité(s) (modèle ${group.modelId})`,
+    );
+    expanded.push({ modelId: group.modelId, objectRuntimeIds: Array.from(ids) });
+  }
+
+  return expanded;
 }
 
 export interface HighlightOptions {
@@ -147,28 +204,31 @@ export async function highlightResults(
   if (!results.length) return;
 
   const modelObjectIds = groupByModel(results);
+  const withDescendants = await expandWithDescendants(api, modelObjectIds);
 
   await api.viewer.setSelection({ modelObjectIds }, 'set');
-  await api.viewer.setObjectState({ modelObjectIds }, { color: HIGHLIGHT_COLOR });
+  await api.viewer.setObjectState(
+    { modelObjectIds: withDescendants },
+    { color: HIGHLIGHT_COLOR },
+  );
 
   if (options.isolate) {
     // isolateEntities attend des entityIds externes (pas des runtime IDs) :
     // on isole via setObjectState, qui accepte le même ObjectSelector.
     await api.viewer.setObjectState(undefined, { visible: false });
-    await api.viewer.setObjectState({ modelObjectIds }, { visible: true });
+    await api.viewer.setObjectState({ modelObjectIds: withDescendants }, { visible: true });
   }
 
   // Cadre la caméra sur l'ensemble des résultats pour qu'ils soient visibles.
-  await fitCameraToObjects(api, modelObjectIds, 600);
+  await fitCameraToObjects(api, withDescendants, 600);
 }
 
 /** Sélectionne un élément unique et zoome dessus (clic sur une ligne de résultat). */
 export async function zoomToResult(api: TrimbleAPI, result: SearchResult): Promise<void> {
-  const modelObjectIds = [
-    { modelId: result.modelId, objectRuntimeIds: [result.runtimeId], recursive: true },
-  ];
+  const modelObjectIds = [{ modelId: result.modelId, objectRuntimeIds: [result.runtimeId] }];
+  const withDescendants = await expandWithDescendants(api, modelObjectIds);
   await api.viewer.setSelection({ modelObjectIds }, 'set');
-  await fitCameraToObjects(api, modelObjectIds, 400);
+  await fitCameraToObjects(api, withDescendants, 400);
 }
 
 /** Restaure visibilité, couleurs et opacité du viewer. */

@@ -109,6 +109,12 @@ export interface ObjectBoundingBox {
   max: Vector3;
 }
 
+export interface HierarchyEntity {
+  id: number;
+  name?: string;
+  fileId?: string;
+}
+
 export interface TrimbleViewerAPI {
   getModels: (filter?: string) => Promise<unknown[]>;
   getObjects: (selector?: ViewerObjectSelector, state?: ViewerObjectState) => Promise<unknown[]>;
@@ -119,6 +125,12 @@ export interface TrimbleViewerAPI {
   isolateEntities: (entities: unknown[]) => Promise<void>;
   getCamera: () => Promise<ViewerCamera>;
   setCamera: (target: unknown, options?: Record<string, unknown>) => Promise<void>;
+  getHierarchyChildren: (
+    modelId: string,
+    entityIds: number[],
+    hierarchyType?: number | string,
+    recursive?: boolean,
+  ) => Promise<HierarchyEntity[]>;
   getObjectBoundingBoxes: (
     modelId: string,
     objectRuntimeIds: number[],
