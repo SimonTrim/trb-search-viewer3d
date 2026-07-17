@@ -45,18 +45,44 @@ export async function highlightResults(
 
   const modelObjectIds = groupByModel(results);
 
+  // Repart d'un état de visibilité propre : les isolations précédentes
+  // persistent dans Trimble Connect, même après un rafraîchissement de page.
+  await api.viewer.setObjectState(undefined, { visible: 'reset' });
+
   await api.viewer.setSelection({ modelObjectIds }, 'set');
 
   if (options.isolate) {
-    // Équivalent natif de « Afficher uniquement les objets sélectionnés » :
-    // le viewer résout lui-même la géométrie des objets composites.
+    // Équivalent natif de « Afficher uniquement les objets sélectionnés ».
+    // Deux formats existent selon les versions de l'API : IModelEntities
+    // ({ modelId, entityIds }) et ObjectSelector ({ modelObjectIds }).
+    let isolated: unknown = false;
     try {
-      await api.viewer.isolateEntities([{ modelObjectIds }]);
+      isolated = await api.viewer.isolateEntities(
+        modelObjectIds.map(({ modelId, objectRuntimeIds }) => ({
+          modelId,
+          entityIds: objectRuntimeIds ?? [],
+        })),
+      );
+      console.log('[RechercheElements] isolateEntities(entityIds) →', isolated);
     } catch (isolateError) {
-      console.warn('[RechercheElements] isolateEntities en échec:', isolateError);
-      await api.viewer.setObjectState(undefined, { visible: false });
-      await api.viewer.setObjectState(SELECTED, { visible: true });
+      console.warn('[RechercheElements] isolateEntities(entityIds) en échec:', isolateError);
     }
+
+    if (isolated !== true) {
+      try {
+        isolated = await api.viewer.isolateEntities([{ modelObjectIds }]);
+        console.log('[RechercheElements] isolateEntities(modelObjectIds) →', isolated);
+      } catch (isolateError) {
+        console.warn(
+          '[RechercheElements] isolateEntities(modelObjectIds) en échec:',
+          isolateError,
+        );
+      }
+    }
+
+    // Filet de sécurité : quel que soit le résultat de l'isolation, force
+    // l'affichage des objets sélectionnés (le viewer résout leur géométrie).
+    await api.viewer.setObjectState(SELECTED, { visible: true });
   }
 
   await api.viewer.setObjectState(SELECTED, { color: HIGHLIGHT_COLOR });
@@ -69,6 +95,9 @@ export async function highlightResults(
 export async function zoomToResult(api: TrimbleAPI, result: SearchResult): Promise<void> {
   const modelObjectIds = [{ modelId: result.modelId, objectRuntimeIds: [result.runtimeId] }];
   await api.viewer.setSelection({ modelObjectIds }, 'set');
+  // L'objet peut avoir été masqué par une isolation précédente : on force
+  // sa visibilité avant de cadrer la caméra dessus.
+  await api.viewer.setObjectState(SELECTED, { visible: true });
   await api.viewer.setCamera(SELECTED, { animationTime: 400 });
 }
 
