@@ -8,15 +8,26 @@ import {
 } from '@trimble-oss/moduswebcomponents-react';
 
 import { FilterPanel } from '@/components/FilterPanel';
+import { IndexProgressBar } from '@/components/IndexProgressBar';
 import { ResultsTable } from '@/components/ResultsTable';
 import { SearchBar } from '@/components/SearchBar';
 import { ToastHost } from '@/components/ToastHost';
 import { ViewerActionsBar } from '@/components/ViewerActionsBar';
 import { useToasts } from '@/hooks/useToasts';
 import { useTrimbleConnect } from '@/hooks/useTrimbleConnect';
-import { applyHierarchyFilter, collectIfcTypes } from '@/services/filterService';
-import { buildIndex, clearIndex } from '@/services/propertyIndex';
-import { searchIndex } from '@/services/searchService';
+import {
+  applyHierarchyFilter,
+  collectIfcTypes,
+  filterWithLazyIndex,
+} from '@/services/filterService';
+import {
+  buildIndex,
+  clearIndex,
+  countVisibleObjects,
+  getCachedIndex,
+  shouldUseLazyIndexing,
+} from '@/services/propertyIndex';
+import { searchIndex, searchWithLazyIndex } from '@/services/searchService';
 import {
   HIGHLIGHT_WARN_THRESHOLD,
   highlightResults,
@@ -30,7 +41,12 @@ export default function App() {
   const { toasts, pushToast, dismissToast } = useToasts();
 
   const [status, setStatus] = useState<SearchStatus>('idle');
-  const [progress, setProgress] = useState(0);
+  const [indexProgress, setIndexProgress] = useState({
+    percent: 0,
+    indexed: 0,
+    total: 0,
+    lazyMode: false,
+  });
   const [results, setResults] = useState<SearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
@@ -83,10 +99,19 @@ export default function App() {
     [api, pushToast],
   );
 
+  const reportIndexProgress = useCallback((done: number, total: number, lazyMode: boolean) => {
+    setIndexProgress({
+      indexed: done,
+      total,
+      percent: total > 0 ? Math.round((done / total) * 100) : 100,
+      lazyMode,
+    });
+  }, []);
+
   const runWithIndex = useCallback(
     async (
       runner: (indexed: Awaited<ReturnType<typeof buildIndex>>) => SearchResult[],
-      options?: { scanOnly?: boolean },
+      options?: { scanOnly?: boolean; lazyRunner?: () => Promise<SearchResult[]> },
     ) => {
       if (isMockMode || !api) {
         pushToast({
@@ -107,15 +132,43 @@ export default function App() {
       }
 
       try {
+        const totalVisible = await countVisibleObjects(api, models);
+        const lazyMode = shouldUseLazyIndexing(totalVisible);
+        reportIndexProgress(0, totalVisible, lazyMode);
         setStatus('indexing');
-        setProgress(0);
-        const indexed = await buildIndex(api, models, (done, total) => {
-          setProgress(total > 0 ? Math.round((done / total) * 100) : 100);
-        });
-        setAvailableTypes(collectIfcTypes(indexed));
-        console.log(`[RechercheElements] Index: ${indexed.length} objet(s)`);
+
+        let found: SearchResult[];
+
+        if (lazyMode && options?.lazyRunner) {
+          found = await options.lazyRunner();
+          const indexed = getCachedIndex(models);
+          setAvailableTypes(collectIfcTypes(indexed));
+          console.log(
+            `[RechercheElements] Analyse progressive: ${indexed.length} objet(s) en cache`,
+          );
+        } else {
+          const indexed = await buildIndex(api, models, (done, total) => {
+            reportIndexProgress(done, total, lazyMode);
+          });
+          setAvailableTypes(collectIfcTypes(indexed));
+          console.log(`[RechercheElements] Index: ${indexed.length} objet(s)`);
+
+          if (options?.scanOnly) {
+            setStatus('idle');
+            pushToast({
+              variant: 'success',
+              title: 'Modèle analysé',
+              message: `${indexed.length} objet(s) indexé(s), ${collectIfcTypes(indexed).length} type(s) IFC.`,
+            });
+            return;
+          }
+
+          setStatus('searching');
+          found = runner(indexed);
+        }
 
         if (options?.scanOnly) {
+          const indexed = getCachedIndex(models);
           setStatus('idle');
           pushToast({
             variant: 'success',
@@ -126,7 +179,6 @@ export default function App() {
         }
 
         setStatus('searching');
-        const found = runner(indexed);
         await applyFoundResults(
           found,
           'Résultats colorisés en rouge dans le viewer.',
@@ -142,31 +194,55 @@ export default function App() {
         });
       }
     },
-    [api, applyFoundResults, isMockMode, models, pushToast],
+    [api, applyFoundResults, isMockMode, models, pushToast, reportIndexProgress],
   );
 
   const handleSearch = useCallback(
     async (query: SearchQuery) => {
-      await runWithIndex((indexed) => {
-        const found = searchIndex(indexed, query);
-        console.log(
-          `[RechercheElements] "${query.text}" (${query.propertyId}): ${found.length} résultat(s)`,
-        );
-        return found;
-      });
+      await runWithIndex(
+        (indexed) => {
+          const found = searchIndex(indexed, query);
+          console.log(
+            `[RechercheElements] "${query.text}" (${query.propertyId}): ${found.length} résultat(s)`,
+          );
+          return found;
+        },
+        {
+          lazyRunner: async () => {
+            const found = await searchWithLazyIndex(api!, models, query, (done, total) => {
+              reportIndexProgress(done, total, true);
+            });
+            console.log(
+              `[RechercheElements] "${query.text}" (${query.propertyId}): ${found.length} résultat(s)`,
+            );
+            return found;
+          },
+        },
+      );
     },
-    [runWithIndex],
+    [api, models, reportIndexProgress, runWithIndex],
   );
 
   const handleFilter = useCallback(
     async (filter: HierarchyFilter) => {
-      await runWithIndex((indexed) => {
-        const found = applyHierarchyFilter(indexed, filter);
-        console.log(`[RechercheElements] Filtre hiérarchique: ${found.length} résultat(s)`);
-        return found;
-      });
+      await runWithIndex(
+        (indexed) => {
+          const found = applyHierarchyFilter(indexed, filter);
+          console.log(`[RechercheElements] Filtre hiérarchique: ${found.length} résultat(s)`);
+          return found;
+        },
+        {
+          lazyRunner: async () => {
+            const found = await filterWithLazyIndex(api!, models, filter, (done, total) => {
+              reportIndexProgress(done, total, true);
+            });
+            console.log(`[RechercheElements] Filtre hiérarchique: ${found.length} résultat(s)`);
+            return found;
+          },
+        },
+      );
     },
-    [runWithIndex],
+    [api, models, reportIndexProgress, runWithIndex],
   );
 
   const handleScanTypes = useCallback(async () => {
@@ -201,11 +277,9 @@ export default function App() {
 
   const working = status === 'indexing' || status === 'searching' || status === 'highlighting';
   const statusLabel =
-    status === 'indexing'
-      ? `Indexation des propriétés… ${progress}%`
-      : status === 'searching'
-        ? 'Recherche en cours…'
-        : 'Mise en évidence dans le viewer…';
+    status === 'searching'
+      ? 'Recherche en cours…'
+      : 'Mise en évidence dans le viewer…';
 
   return (
     <>
@@ -244,7 +318,18 @@ export default function App() {
               loading={working}
             />
 
-            <div className={`search-panel__status${working ? '' : ' u-hidden'}`}>
+            <div className={`search-panel__status${status === 'indexing' ? '' : ' u-hidden'}`}>
+              <IndexProgressBar
+                percent={indexProgress.percent}
+                indexed={indexProgress.indexed}
+                total={indexProgress.total}
+                lazyMode={indexProgress.lazyMode}
+              />
+            </div>
+
+            <div
+              className={`search-panel__status${status === 'searching' || status === 'highlighting' ? '' : ' u-hidden'}`}
+            >
               <ModusWcLoader size="sm" />
               <ModusWcTypography hierarchy="p" label={statusLabel} />
             </div>
