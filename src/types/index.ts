@@ -7,6 +7,21 @@ export interface SearchQuery {
   caseSensitive: boolean;
 }
 
+export interface FilterRule {
+  propertyId: string;
+  matchMode: MatchMode;
+  text: string;
+}
+
+/** Filtre hiérarchique — PRD complément §3.3 */
+export interface HierarchyFilter {
+  /** Types IFC sélectionnés (vide = tous les types) */
+  ifcTypes: string[];
+  /** Règles combinées type + propriété (ET logique) */
+  rules: FilterRule[];
+  caseSensitive: boolean;
+}
+
 export interface SearchResult {
   modelId: string;
   runtimeId: number;

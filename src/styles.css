@@ -115,6 +115,58 @@ body {
   width: 100%;
 }
 
+.filter-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--modus-wc-color-gray-2, #e0e1e9);
+}
+
+.filter-panel__section {
+  display: grid;
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+
+.filter-panel__scan {
+  display: grid;
+  gap: 8px;
+}
+
+.filter-panel__type-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-panel__type-list {
+  display: grid;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.filter-panel__rule {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, 0.8fr) minmax(0, 1fr) auto;
+  align-items: end;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--modus-wc-color-gray-1, #f1f1f6);
+}
+
+.filter-panel__case {
+  width: 100%;
+}
+
+@media (max-width: 420px) {
+  .filter-panel__rule {
+    grid-template-columns: 1fr;
+  }
+}
+
 .toast-host {
   position: fixed;
   inset: 0;

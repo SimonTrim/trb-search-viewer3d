@@ -1,6 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ITableColumn } from '@trimble-oss/moduswebcomponents';
+import type { IPaginationChangeEventDetail, ITableColumn, ModusWcTableCustomEvent } from '@trimble-oss/moduswebcomponents';
 import { ModusWcTable, ModusWcTypography } from '@trimble-oss/moduswebcomponents-react';
 
 import type { SearchResult } from '@/types';
@@ -19,6 +19,12 @@ interface ResultRow extends Record<string, unknown> {
 }
 
 export function ResultsTable({ results, multiModel, onRowClick }: ResultsTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [results]);
+
   const rows = useMemo<ResultRow[]>(
     () =>
       results.map((result, index) => ({
@@ -51,6 +57,16 @@ export function ResultsTable({ results, multiModel, onRowClick }: ResultsTablePr
     [onRowClick, results],
   );
 
+  const handlePaginationChange = useCallback(
+    (event: ModusWcTableCustomEvent<IPaginationChangeEventDetail>) => {
+      const nextPage = event.detail?.currentPage;
+      if (typeof nextPage === 'number' && nextPage >= 1) {
+        setCurrentPage(nextPage);
+      }
+    },
+    [],
+  );
+
   return (
     <div className="results-table">
       <ModusWcTypography
@@ -66,11 +82,12 @@ export function ResultsTable({ results, multiModel, onRowClick }: ResultsTablePr
           hover
           zebra
           paginated={rows.length > 25}
-          currentPage={1}
+          currentPage={currentPage}
           pageSizeOptions={[25, 50, 100]}
-          showPageSizeSelector={false}
+          showPageSizeSelector={rows.length > 25}
           caption="Résultats de recherche"
           onRowClick={handleRowClick}
+          onPaginationChange={handlePaginationChange}
         />
       </div>
     </div>

@@ -7,12 +7,14 @@ import {
   ModusWcTypography,
 } from '@trimble-oss/moduswebcomponents-react';
 
+import { FilterPanel } from '@/components/FilterPanel';
 import { ResultsTable } from '@/components/ResultsTable';
 import { SearchBar } from '@/components/SearchBar';
 import { ToastHost } from '@/components/ToastHost';
 import { ViewerActionsBar } from '@/components/ViewerActionsBar';
 import { useToasts } from '@/hooks/useToasts';
 import { useTrimbleConnect } from '@/hooks/useTrimbleConnect';
+import { applyHierarchyFilter, collectIfcTypes } from '@/services/filterService';
 import { buildIndex, clearIndex } from '@/services/propertyIndex';
 import { searchIndex } from '@/services/searchService';
 import {
@@ -21,7 +23,7 @@ import {
   resetViewer,
   zoomToResult,
 } from '@/services/viewerActions';
-import type { SearchQuery, SearchResult, SearchStatus } from '@/types';
+import type { HierarchyFilter, SearchQuery, SearchResult, SearchStatus } from '@/types';
 
 export default function App() {
   const { api, isBusy, isMockMode, models, error } = useTrimbleConnect();
@@ -31,6 +33,7 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [isolate, setIsolate] = useState(true);
   const isolateRef = useRef(isolate);
   isolateRef.current = isolate;
@@ -38,14 +41,53 @@ export default function App() {
   // Les modèles chargés ont changé : l'index des propriétés n'est plus fiable.
   useEffect(() => {
     clearIndex();
+    setAvailableTypes([]);
   }, [models]);
 
   useEffect(() => {
     console.log(`[RechercheElements] isBusy=${isBusy} isMockMode=${isMockMode} models=${models.length}`);
   }, [isBusy, isMockMode, models]);
 
-  const handleSearch = useCallback(
-    async (query: SearchQuery) => {
+  const applyFoundResults = useCallback(
+    async (found: SearchResult[], successMessage: string, emptyMessage?: string) => {
+      if (!api) return;
+
+      setResults(found);
+      setHasSearched(true);
+
+      if (!found.length) {
+        setStatus('idle');
+        if (emptyMessage) {
+          pushToast({ variant: 'info', title: 'Aucun résultat', message: emptyMessage });
+        }
+        return;
+      }
+
+      setStatus('highlighting');
+      if (found.length > HIGHLIGHT_WARN_THRESHOLD) {
+        pushToast({
+          variant: 'warning',
+          title: `${found.length} éléments`,
+          message: 'La colorisation peut prendre quelques secondes.',
+        });
+      }
+      await highlightResults(api, found, { isolate: isolateRef.current });
+
+      setStatus('idle');
+      pushToast({
+        variant: 'success',
+        title: `${found.length} élément(s) trouvé(s)`,
+        message: successMessage,
+      });
+    },
+    [api, pushToast],
+  );
+
+  const runWithIndex = useCallback(
+    async (
+      runner: (indexed: Awaited<ReturnType<typeof buildIndex>>) => SearchResult[],
+      options?: { scanOnly?: boolean },
+    ) => {
       if (isMockMode || !api) {
         pushToast({
           variant: 'info',
@@ -70,54 +112,66 @@ export default function App() {
         const indexed = await buildIndex(api, models, (done, total) => {
           setProgress(total > 0 ? Math.round((done / total) * 100) : 100);
         });
+        setAvailableTypes(collectIfcTypes(indexed));
         console.log(`[RechercheElements] Index: ${indexed.length} objet(s)`);
 
-        setStatus('searching');
-        const found = searchIndex(indexed, query);
-        console.log(`[RechercheElements] "${query.text}" (${query.propertyId}): ${found.length} résultat(s)`);
-
-        setResults(found);
-        setHasSearched(true);
-
-        if (!found.length) {
+        if (options?.scanOnly) {
           setStatus('idle');
           pushToast({
-            variant: 'info',
-            title: 'Aucun résultat',
-            message: `Aucun élément ne correspond à « ${query.text} ».`,
+            variant: 'success',
+            title: 'Modèle analysé',
+            message: `${indexed.length} objet(s) indexé(s), ${collectIfcTypes(indexed).length} type(s) IFC.`,
           });
           return;
         }
 
-        setStatus('highlighting');
-        if (found.length > HIGHLIGHT_WARN_THRESHOLD) {
-          pushToast({
-            variant: 'warning',
-            title: `${found.length} éléments`,
-            message: 'La colorisation peut prendre quelques secondes.',
-          });
-        }
-        await highlightResults(api, found, { isolate: isolateRef.current });
-
-        setStatus('idle');
-        pushToast({
-          variant: 'success',
-          title: `${found.length} élément(s) trouvé(s)`,
-          message: 'Résultats colorisés en rouge dans le viewer.',
-        });
+        setStatus('searching');
+        const found = runner(indexed);
+        await applyFoundResults(
+          found,
+          'Résultats colorisés en rouge dans le viewer.',
+          'Aucun élément ne correspond aux critères.',
+        );
       } catch (searchError) {
-        console.error('[RechercheElements] Erreur de recherche:', searchError);
+        console.error('[RechercheElements] Erreur:', searchError);
         setStatus('error');
         pushToast({
           variant: 'error',
           title: 'Erreur',
-          message:
-            searchError instanceof Error ? searchError.message : 'La recherche a échoué.',
+          message: searchError instanceof Error ? searchError.message : 'L\'opération a échoué.',
         });
       }
     },
-    [api, isMockMode, models, pushToast],
+    [api, applyFoundResults, isMockMode, models, pushToast],
   );
+
+  const handleSearch = useCallback(
+    async (query: SearchQuery) => {
+      await runWithIndex((indexed) => {
+        const found = searchIndex(indexed, query);
+        console.log(
+          `[RechercheElements] "${query.text}" (${query.propertyId}): ${found.length} résultat(s)`,
+        );
+        return found;
+      });
+    },
+    [runWithIndex],
+  );
+
+  const handleFilter = useCallback(
+    async (filter: HierarchyFilter) => {
+      await runWithIndex((indexed) => {
+        const found = applyHierarchyFilter(indexed, filter);
+        console.log(`[RechercheElements] Filtre hiérarchique: ${found.length} résultat(s)`);
+        return found;
+      });
+    },
+    [runWithIndex],
+  );
+
+  const handleScanTypes = useCallback(async () => {
+    await runWithIndex(() => [], { scanOnly: true });
+  }, [runWithIndex]);
 
   const handleRowClick = useCallback(
     async (result: SearchResult) => {
@@ -178,6 +232,14 @@ export default function App() {
           <div className={isBusy ? 'u-hidden' : undefined}>
             <SearchBar
               onSearch={handleSearch}
+              disabled={!models.length && !isMockMode}
+              loading={working}
+            />
+
+            <FilterPanel
+              availableTypes={availableTypes}
+              onApply={handleFilter}
+              onScanTypes={handleScanTypes}
               disabled={!models.length && !isMockMode}
               loading={working}
             />
