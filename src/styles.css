@@ -113,6 +113,11 @@ body {
   gap: 8px;
 }
 
+.results-table__sync-hint {
+  color: var(--modus-wc-color-gray-8, #464b52);
+  font-size: 0.8125rem;
+}
+
 .results-table__sort {
   display: grid;
   gap: 8px;

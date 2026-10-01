@@ -16,6 +16,7 @@ import type {
   ViewerModel,
   ViewerSelection,
 } from '@/types';
+import { normalizeViewerSelection } from '@/utils/selectionSync';
 
 declare global {
   interface Window {
@@ -156,7 +157,7 @@ function useProvideTrimbleConnect(): TrimbleContextValue {
 
           if (event === 'viewer.selectionChanged' || event === 'viewer.onSelectionChanged') {
             updateIfMounted({
-              selection: Array.isArray(data) ? (data as ViewerSelection[]) : [],
+              selection: normalizeViewerSelection(data),
             });
           }
 

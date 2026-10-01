@@ -36,9 +36,10 @@ import {
   zoomToResult,
 } from '@/services/viewerActions';
 import type { HierarchyFilter, SearchQuery, SearchResult, SearchStatus } from '@/types';
+import { resultRowId, rowIdsFromViewerSelection } from '@/utils/selectionSync';
 
 export default function App() {
-  const { api, isBusy, isMockMode, models, error } = useTrimbleConnect();
+  const { api, isBusy, isMockMode, models, selection, error } = useTrimbleConnect();
   const { toasts, pushToast, dismissToast } = useToasts();
 
   const [status, setStatus] = useState<SearchStatus>('idle');
@@ -49,7 +50,9 @@ export default function App() {
     lazyMode: false,
   });
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const suppressViewerSyncRef = useRef(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [isolate, setIsolate] = useState(true);
   const isolateRef = useRef(isolate);
@@ -59,7 +62,23 @@ export default function App() {
   useEffect(() => {
     clearIndex();
     setAvailableTypes([]);
+    setSelectedRowIds([]);
   }, [models]);
+
+  // Viewer → tableau : surbrillance des lignes correspondant à la sélection 3D.
+  useEffect(() => {
+    if (!results.length) {
+      setSelectedRowIds([]);
+      return;
+    }
+
+    if (suppressViewerSyncRef.current) {
+      suppressViewerSyncRef.current = false;
+      return;
+    }
+
+    setSelectedRowIds(rowIdsFromViewerSelection(selection, results));
+  }, [results, selection]);
 
   useEffect(() => {
     console.log(`[RechercheElements] isBusy=${isBusy} isMockMode=${isMockMode} models=${models.length}`);
@@ -70,6 +89,7 @@ export default function App() {
       if (!api) return;
 
       setResults(found);
+      setSelectedRowIds([]);
       setHasSearched(true);
 
       if (!found.length) {
@@ -253,6 +273,10 @@ export default function App() {
   const handleRowClick = useCallback(
     async (result: SearchResult) => {
       if (!api) return;
+
+      suppressViewerSyncRef.current = true;
+      setSelectedRowIds([resultRowId(result)]);
+
       try {
         await zoomToResult(api, result);
       } catch (zoomError) {
@@ -341,6 +365,7 @@ export default function App() {
                 <ResultsTable
                   results={results}
                   multiModel={models.length > 1}
+                  selectedRowIds={selectedRowIds}
                   onRowClick={handleRowClick}
                 />
                 <ViewerActionsBar
