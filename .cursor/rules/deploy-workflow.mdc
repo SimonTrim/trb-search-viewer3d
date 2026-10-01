@@ -1,0 +1,28 @@
+---
+description: Commit, push GitHub et déploiement Vercel après chaque mise à jour du code extension
+alwaysApply: true
+---
+
+# Workflow déploiement — Extension Recherche d'éléments TC
+
+Après toute modification du code de l'extension (`src/`, `public/`, config build), terminer systématiquement par :
+
+1. `npm run check` puis `npm run build` — vérifier que le build passe
+2. `git add` des fichiers pertinents uniquement (pas de logs, `.env`, secrets)
+3. `git commit` avec message concis en français (style existant du repo)
+4. `git push origin master`
+5. `vercel.cmd --prod --yes` — le push seul ne déclenche pas toujours le build Vercel
+
+## Infos projet
+
+- GitHub : `SimonTrim/trb-search-viewer3d` (branche `master`)
+- Production : https://trb-search-viewer3d.vercel.app
+- Manifest TC : https://trb-search-viewer3d.vercel.app/manifest.json
+
+## Exclusions commit
+
+Ne pas committer : `Logs_console_dev_chrome.md`, fichiers `.env*`, modifications `.gitignore` non liées au travail en cours.
+
+## Après déploiement
+
+Rappeler à l'utilisateur de réinstaller l'extension TC si le manifest a changé.
