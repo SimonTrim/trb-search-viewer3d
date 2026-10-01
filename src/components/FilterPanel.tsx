@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState, type FormEvent } from 'react';
 
 import {
   ModusWcAccordion,
@@ -12,8 +12,10 @@ import {
 } from '@trimble-oss/moduswebcomponents-react';
 
 import {
+  DEFAULT_LEVEL1_PROPERTY_ID,
   DEFAULT_MATCH_MODE,
   DEFAULT_PROPERTY_ID,
+  getPropertyLabel,
   MATCH_MODE_OPTIONS,
   PROPERTY_SELECT_OPTIONS,
 } from '@/config/searchProperties';
@@ -21,9 +23,10 @@ import type { FilterRule, HierarchyFilter, MatchMode } from '@/types';
 import { readInputChecked, readInputString } from '@/utils/modusFormEvents';
 
 export interface FilterPanelProps {
-  availableTypes: string[];
+  availableLevel1Values: string[];
+  scannedLevel1PropertyId: string | null;
   onApply: (filter: HierarchyFilter) => void;
-  onScanTypes?: () => void;
+  onScanModel: (propertyId: string) => void;
   disabled?: boolean;
   loading?: boolean;
 }
@@ -37,30 +40,45 @@ function createEmptyRule(): FilterRule {
 }
 
 export function FilterPanel({
-  availableTypes,
+  availableLevel1Values,
+  scannedLevel1PropertyId,
   onApply,
-  onScanTypes,
+  onScanModel,
   disabled = false,
   loading = false,
 }: FilterPanelProps) {
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [level1PropertyId, setLevel1PropertyId] = useState(DEFAULT_LEVEL1_PROPERTY_ID);
+  const [selectedLevel1Values, setSelectedLevel1Values] = useState<string[]>([]);
   const [rules, setRules] = useState<FilterRule[]>([createEmptyRule()]);
   const [caseSensitive, setCaseSensitive] = useState(false);
-  const [typesExpanded, setTypesExpanded] = useState(true);
+  const [level1Expanded, setLevel1Expanded] = useState(true);
   const [rulesExpanded, setRulesExpanded] = useState(false);
 
-  const toggleType = useCallback((ifcType: string, checked: boolean) => {
-    setSelectedTypes((current) =>
-      checked ? [...current, ifcType] : current.filter((type) => type !== ifcType),
+  const level1PropertyLabel = useMemo(
+    () => getPropertyLabel(level1PropertyId),
+    [level1PropertyId],
+  );
+
+  const level1ValuesReady =
+    scannedLevel1PropertyId === level1PropertyId && availableLevel1Values.length > 0;
+
+  const toggleLevel1Value = useCallback((value: string, checked: boolean) => {
+    setSelectedLevel1Values((current) =>
+      checked ? [...current, value] : current.filter((entry) => entry !== value),
     );
   }, []);
 
-  const selectAllTypes = useCallback(() => {
-    setSelectedTypes(availableTypes);
-  }, [availableTypes]);
+  const selectAllLevel1Values = useCallback(() => {
+    setSelectedLevel1Values(availableLevel1Values);
+  }, [availableLevel1Values]);
 
-  const clearTypes = useCallback(() => {
-    setSelectedTypes([]);
+  const clearLevel1Values = useCallback(() => {
+    setSelectedLevel1Values([]);
+  }, []);
+
+  const handleLevel1PropertyChange = useCallback((propertyId: string) => {
+    setLevel1PropertyId(propertyId);
+    setSelectedLevel1Values([]);
   }, []);
 
   const updateRule = useCallback((index: number, patch: Partial<FilterRule>) => {
@@ -83,52 +101,72 @@ export function FilterPanel({
       if (disabled || loading) return;
 
       onApply({
-        ifcTypes: selectedTypes,
+        level1: {
+          propertyId: level1PropertyId,
+          values: selectedLevel1Values,
+        },
         rules: rules.filter((rule) => rule.text.trim().length > 0),
         caseSensitive,
       });
     },
-    [caseSensitive, disabled, loading, onApply, rules, selectedTypes],
+    [caseSensitive, disabled, level1PropertyId, loading, onApply, rules, selectedLevel1Values],
   );
 
   const hasActiveFilter =
-    selectedTypes.length > 0 || rules.some((rule) => rule.text.trim().length > 0);
+    selectedLevel1Values.length > 0 || rules.some((rule) => rule.text.trim().length > 0);
 
   return (
     <form className="filter-panel" onSubmit={handleSubmit} noValidate>
       <ModusWcAccordion aria-label="Filtres hiérarchiques">
         <ModusWcCollapse
-          expanded={typesExpanded}
+          expanded={level1Expanded}
           options={{
-            title: 'Niveau 1 — Types d\'objet',
-            description: 'Isoler par type IFC (IfcSpace, IfcColumn…)',
+            title: 'Niveau 1 — Filtre par propriété',
+            description: `Restreindre par ${level1PropertyLabel}`,
             icon: 'layers',
             size: 'sm',
           }}
           onExpandedChange={(event: CustomEvent<{ expanded: boolean }>) =>
-            setTypesExpanded(event.detail.expanded)
+            setLevel1Expanded(event.detail.expanded)
           }
         >
           <div slot="content" className="filter-panel__section">
-            {availableTypes.length === 0 ? (
-              <div className="filter-panel__scan">
+            <ModusWcSelect
+              className="filter-panel__level1-property"
+              label="Propriété niveau 1"
+              size="sm"
+              value={level1PropertyId}
+              options={PROPERTY_SELECT_OPTIONS}
+              disabled={disabled || loading}
+              onInputChange={(event: CustomEvent) =>
+                handleLevel1PropertyChange(readInputString(event))
+              }
+            />
+
+            <div className="filter-panel__scan">
+              <ModusWcTypography
+                hierarchy="p"
+                label="Choisissez une propriété puis analysez le modèle pour lister les valeurs disponibles."
+              />
+              <ModusWcButton
+                type="button"
+                variant="outlined"
+                color="secondary"
+                size="sm"
+                disabled={disabled || loading}
+                onButtonClick={() => onScanModel(level1PropertyId)}
+              >
+                Analyser le modèle
+              </ModusWcButton>
+            </div>
+
+            {!level1ValuesReady ? (
+              scannedLevel1PropertyId && scannedLevel1PropertyId !== level1PropertyId ? (
                 <ModusWcTypography
                   hierarchy="p"
-                  label="Analysez le modèle pour lister les types IFC disponibles."
+                  label="La propriété a changé : relancez l'analyse pour afficher les nouvelles valeurs."
                 />
-                {onScanTypes ? (
-                  <ModusWcButton
-                    type="button"
-                    variant="outlined"
-                    color="secondary"
-                    size="sm"
-                    disabled={disabled || loading}
-                    onButtonClick={onScanTypes}
-                  >
-                    Analyser le modèle
-                  </ModusWcButton>
-                ) : null}
-              </div>
+              ) : null
             ) : (
               <>
                 <div className="filter-panel__type-actions">
@@ -137,7 +175,7 @@ export function FilterPanel({
                     variant="borderless"
                     size="xs"
                     disabled={disabled || loading}
-                    onButtonClick={selectAllTypes}
+                    onButtonClick={selectAllLevel1Values}
                   >
                     Tout sélectionner
                   </ModusWcButton>
@@ -146,21 +184,21 @@ export function FilterPanel({
                     variant="borderless"
                     size="xs"
                     disabled={disabled || loading}
-                    onButtonClick={clearTypes}
+                    onButtonClick={clearLevel1Values}
                   >
                     Effacer
                   </ModusWcButton>
                 </div>
                 <div className="filter-panel__type-list">
-                  {availableTypes.map((ifcType) => (
+                  {availableLevel1Values.map((value) => (
                     <ModusWcCheckbox
-                      key={ifcType}
-                      label={ifcType}
+                      key={value}
+                      label={value}
                       size="sm"
-                      value={selectedTypes.includes(ifcType)}
+                      value={selectedLevel1Values.includes(value)}
                       disabled={disabled || loading}
                       onInputChange={(event: CustomEvent) =>
-                        toggleType(ifcType, readInputChecked(event))
+                        toggleLevel1Value(value, readInputChecked(event))
                       }
                     />
                   ))}
@@ -185,41 +223,44 @@ export function FilterPanel({
           <div slot="content" className="filter-panel__section">
             {rules.map((rule, index) => (
               <div key={index} className="filter-panel__rule">
-                <ModusWcSelect
-                  className="filter-panel__rule-property"
-                  label={`Propriété ${index + 1}`}
-                  size="sm"
-                  value={rule.propertyId}
-                  options={PROPERTY_SELECT_OPTIONS}
-                  disabled={disabled || loading}
-                  onInputChange={(event: CustomEvent) =>
-                    updateRule(index, { propertyId: readInputString(event) })
-                  }
-                />
-                <ModusWcSelect
-                  className="filter-panel__rule-match"
-                  label="Correspondance"
-                  size="sm"
-                  value={rule.matchMode}
-                  options={MATCH_MODE_OPTIONS}
-                  disabled={disabled || loading}
-                  onInputChange={(event: CustomEvent) =>
-                    updateRule(index, { matchMode: readInputString(event) as MatchMode })
-                  }
-                />
-                <ModusWcTextInput
-                  className="filter-panel__rule-value"
-                  label="Valeur"
-                  size="sm"
-                  placeholder="Valeur à filtrer…"
-                  value={rule.text}
-                  disabled={disabled || loading}
-                  onInputChange={(event: CustomEvent) =>
-                    updateRule(index, { text: readInputString(event) })
-                  }
-                />
+                <div className="filter-panel__rule-fields">
+                  <ModusWcSelect
+                    className="filter-panel__rule-property"
+                    label={`Propriété ${index + 1}`}
+                    size="sm"
+                    value={rule.propertyId}
+                    options={PROPERTY_SELECT_OPTIONS}
+                    disabled={disabled || loading}
+                    onInputChange={(event: CustomEvent) =>
+                      updateRule(index, { propertyId: readInputString(event) })
+                    }
+                  />
+                  <ModusWcSelect
+                    className="filter-panel__rule-match"
+                    label="Correspondance"
+                    size="sm"
+                    value={rule.matchMode}
+                    options={MATCH_MODE_OPTIONS}
+                    disabled={disabled || loading}
+                    onInputChange={(event: CustomEvent) =>
+                      updateRule(index, { matchMode: readInputString(event) as MatchMode })
+                    }
+                  />
+                  <ModusWcTextInput
+                    className="filter-panel__rule-value"
+                    label="Valeur"
+                    size="sm"
+                    placeholder="Valeur à filtrer…"
+                    value={rule.text}
+                    disabled={disabled || loading}
+                    onInputChange={(event: CustomEvent) =>
+                      updateRule(index, { text: readInputString(event) })
+                    }
+                  />
+                </div>
                 <ModusWcButton
                   type="button"
+                  className="filter-panel__rule-remove"
                   variant="borderless"
                   color="danger"
                   size="sm"

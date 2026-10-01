@@ -144,7 +144,12 @@ export const MATCH_MODE_OPTIONS: ISelectOption[] = [
 ];
 
 export const DEFAULT_PROPERTY_ID = 'name';
+export const DEFAULT_LEVEL1_PROPERTY_ID = 'ifcClass';
 export const DEFAULT_MATCH_MODE: MatchMode = 'contains';
+
+export function getPropertyLabel(propertyId: string): string {
+  return SEARCH_PROPERTIES.find((entry) => entry.id === propertyId)?.label ?? propertyId;
+}
 
 function findInPropertySets(obj: ObjectProperties, setName: string, propName: string): string {
   const set = obj.properties?.find(

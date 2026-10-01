@@ -13,11 +13,17 @@ export interface FilterRule {
   text: string;
 }
 
+/** Filtre niveau 1 — restriction par valeurs distinctes d'une propriété. */
+export interface Level1Filter {
+  propertyId: string;
+  /** Valeurs cochées (vide = pas de restriction niveau 1) */
+  values: string[];
+}
+
 /** Filtre hiérarchique — PRD complément §3.3 */
 export interface HierarchyFilter {
-  /** Types IFC sélectionnés (vide = tous les types) */
-  ifcTypes: string[];
-  /** Règles combinées type + propriété (ET logique) */
+  level1: Level1Filter;
+  /** Règles combinées sur les propriétés (ET logique) */
   rules: FilterRule[];
   caseSensitive: boolean;
 }

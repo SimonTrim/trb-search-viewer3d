@@ -7,14 +7,17 @@ import {
   type IndexProgressCallback,
 } from './propertyIndex';
 
-/** Collecte les types IFC distincts présents dans l'index. */
-export function collectIfcTypes(indexed: IndexedObject[]): string[] {
-  const types = new Set<string>();
+/** Collecte les valeurs distinctes d'une propriété dans l'index. */
+export function collectDistinctPropertyValues(
+  indexed: IndexedObject[],
+  propertyId: string,
+): string[] {
+  const values = new Set<string>();
   for (const entry of indexed) {
-    const ifcClass = entry.props.class ?? entry.props.type ?? '';
-    if (ifcClass) types.add(ifcClass);
+    const value = resolveProperty(entry.props, propertyId).trim();
+    if (value) values.add(value);
   }
-  return Array.from(types).sort((a, b) => a.localeCompare(b));
+  return Array.from(values).sort((a, b) => a.localeCompare(b, 'fr'));
 }
 
 function toSearchResult(entry: IndexedObject, matchedValue = ''): SearchResult {
@@ -28,17 +31,26 @@ function toSearchResult(entry: IndexedObject, matchedValue = ''): SearchResult {
   };
 }
 
+function matchesLevel1Value(value: string, selected: string, caseSensitive: boolean): boolean {
+  if (caseSensitive) return value === selected;
+  return value.toLowerCase() === selected.toLowerCase();
+}
+
 export function matchHierarchyFilterEntry(
   entry: IndexedObject,
   filter: HierarchyFilter,
 ): SearchResult | null {
   const ifcClass = entry.props.class ?? entry.props.type ?? '';
-
-  if (filter.ifcTypes.length > 0 && !filter.ifcTypes.includes(ifcClass)) {
-    return null;
-  }
-
   let lastMatchedValue = ifcClass;
+
+  if (filter.level1.values.length > 0) {
+    const level1Value = resolveProperty(entry.props, filter.level1.propertyId);
+    const matchesLevel1 = filter.level1.values.some((selected) =>
+      matchesLevel1Value(level1Value, selected, filter.caseSensitive),
+    );
+    if (!matchesLevel1) return null;
+    lastMatchedValue = level1Value;
+  }
 
   for (const rule of filter.rules) {
     const trimmed = rule.text.trim();
@@ -56,7 +68,7 @@ export function matchHierarchyFilterEntry(
 
 /**
  * Applique le filtre hiérarchique sur l'index :
- * - Niveau 1 : restriction par types IFC (cases à cocher)
+ * - Niveau 1 : restriction par valeurs d'une propriété (cases à cocher)
  * - Niveau 2 : règles combinées sur les propriétés (ET logique)
  */
 export function applyHierarchyFilter(

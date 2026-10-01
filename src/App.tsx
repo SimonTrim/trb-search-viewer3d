@@ -20,9 +20,10 @@ import { useToasts } from '@/hooks/useToasts';
 import { useTrimbleConnect } from '@/hooks/useTrimbleConnect';
 import {
   applyHierarchyFilter,
-  collectIfcTypes,
+  collectDistinctPropertyValues,
   filterWithLazyIndex,
 } from '@/services/filterService';
+import { getPropertyLabel } from '@/config/searchProperties';
 import {
   buildIndex,
   clearIndex,
@@ -55,7 +56,8 @@ export default function App() {
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const suppressViewerSyncRef = useRef(false);
-  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [availableLevel1Values, setAvailableLevel1Values] = useState<string[]>([]);
+  const [scannedLevel1PropertyId, setScannedLevel1PropertyId] = useState<string | null>(null);
   const [formSessionKey, setFormSessionKey] = useState(0);
   const [isolate, setIsolate] = useState(true);
   const isolateRef = useRef(isolate);
@@ -64,7 +66,8 @@ export default function App() {
   // Les modèles chargés ont changé : l'index des propriétés n'est plus fiable.
   useEffect(() => {
     clearIndex();
-    setAvailableTypes([]);
+    setAvailableLevel1Values([]);
+    setScannedLevel1PropertyId(null);
     setSelectedRowIds([]);
   }, [models]);
 
@@ -135,7 +138,11 @@ export default function App() {
   const runWithIndex = useCallback(
     async (
       runner: (indexed: Awaited<ReturnType<typeof buildIndex>>) => SearchResult[],
-      options?: { scanOnly?: boolean; lazyRunner?: () => Promise<SearchResult[]> },
+      options?: {
+        scanOnly?: boolean;
+        scanPropertyId?: string;
+        lazyRunner?: () => Promise<SearchResult[]>;
+      },
     ) => {
       if (isMockMode || !api) {
         pushToast({
@@ -163,43 +170,42 @@ export default function App() {
 
         let found: SearchResult[];
 
+        const finishScan = (indexed: Awaited<ReturnType<typeof buildIndex>>) => {
+          if (!options?.scanPropertyId) return;
+          const values = collectDistinctPropertyValues(indexed, options.scanPropertyId);
+          setAvailableLevel1Values(values);
+          setScannedLevel1PropertyId(options.scanPropertyId);
+          setStatus('idle');
+          pushToast({
+            variant: 'success',
+            title: 'Modèle analysé',
+            message: `${indexed.length} objet(s) indexé(s), ${values.length} valeur(s) pour « ${getPropertyLabel(options.scanPropertyId)} ».`,
+          });
+        };
+
         if (lazyMode && options?.lazyRunner) {
           found = await options.lazyRunner();
           const indexed = getCachedIndex(models);
-          setAvailableTypes(collectIfcTypes(indexed));
           console.log(
             `[RechercheElements] Analyse progressive: ${indexed.length} objet(s) en cache`,
           );
+          if (options.scanOnly) {
+            finishScan(indexed);
+            return;
+          }
         } else {
           const indexed = await buildIndex(api, models, (done, total) => {
             reportIndexProgress(done, total, lazyMode);
           });
-          setAvailableTypes(collectIfcTypes(indexed));
           console.log(`[RechercheElements] Index: ${indexed.length} objet(s)`);
 
           if (options?.scanOnly) {
-            setStatus('idle');
-            pushToast({
-              variant: 'success',
-              title: 'Modèle analysé',
-              message: `${indexed.length} objet(s) indexé(s), ${collectIfcTypes(indexed).length} type(s) IFC.`,
-            });
+            finishScan(indexed);
             return;
           }
 
           setStatus('searching');
           found = runner(indexed);
-        }
-
-        if (options?.scanOnly) {
-          const indexed = getCachedIndex(models);
-          setStatus('idle');
-          pushToast({
-            variant: 'success',
-            title: 'Modèle analysé',
-            message: `${indexed.length} objet(s) indexé(s), ${collectIfcTypes(indexed).length} type(s) IFC.`,
-          });
-          return;
         }
 
         setStatus('searching');
@@ -269,9 +275,12 @@ export default function App() {
     [api, models, reportIndexProgress, runWithIndex],
   );
 
-  const handleScanTypes = useCallback(async () => {
-    await runWithIndex(() => [], { scanOnly: true });
-  }, [runWithIndex]);
+  const handleScanModel = useCallback(
+    async (propertyId: string) => {
+      await runWithIndex(() => [], { scanOnly: true, scanPropertyId: propertyId });
+    },
+    [runWithIndex],
+  );
 
   const handleRowClick = useCallback(
     async (result: SearchResult) => {
@@ -307,9 +316,12 @@ export default function App() {
       }
     }
 
+    clearIndex();
     setResults([]);
     setSelectedRowIds([]);
     setHasSearched(false);
+    setAvailableLevel1Values([]);
+    setScannedLevel1PropertyId(null);
     setStatus('idle');
     setIndexProgress({ percent: 0, indexed: 0, total: 0, lazyMode: false });
     setFormSessionKey((current) => current + 1);
@@ -371,9 +383,10 @@ export default function App() {
 
             <FilterPanel
               key={`filter-${formSessionKey}`}
-              availableTypes={availableTypes}
+              availableLevel1Values={availableLevel1Values}
+              scannedLevel1PropertyId={scannedLevel1PropertyId}
               onApply={handleFilter}
-              onScanTypes={handleScanTypes}
+              onScanModel={handleScanModel}
               disabled={!models.length && !isMockMode}
               loading={working}
             />
