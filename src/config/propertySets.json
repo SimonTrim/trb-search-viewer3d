@@ -4,7 +4,10 @@
     "properties": {
       "thematique": "THEMATIQUE",
       "categorie": "CATEGORIE",
-      "typeObjet": "TYPE_OBJET"
+      "typeObjet": "TYPE_OBJET",
+      "localisation": "LOCALISATION",
+      "niveau": "NIVEAU",
+      "gestionnaire": "GESTIONNAIRE"
     }
   }
 }

@@ -9,6 +9,7 @@ import {
 
 import { FilterPanel } from '@/components/FilterPanel';
 import { IndexProgressBar } from '@/components/IndexProgressBar';
+import { ResultsSummary } from '@/components/ResultsSummary';
 import { ResultsTable } from '@/components/ResultsTable';
 import { SearchBar } from '@/components/SearchBar';
 import { ToastHost } from '@/components/ToastHost';
@@ -290,7 +291,7 @@ export default function App() {
               est pilotée par la classe u-hidden (l'attribut hidden est manipulé par
               Stencil/Modus sur les enfants slottés et ne serait pas fiable). */}
           <header className="search-panel__header">
-            <ModusWcTypography hierarchy="h3" label="Recherche d'éléments" />
+            <ModusWcTypography hierarchy="h3" label="Recherche et filtrage d'éléments" />
             <div className={isMockMode ? undefined : 'u-hidden'}>
               <ModusWcAlert variant="info" alertTitle="Mode développement">
                 {error ?? 'Workspace API non disponible — interface testable hors Trimble Connect.'}
@@ -336,6 +337,7 @@ export default function App() {
 
             <div className={`search-panel__results${hasSearched && !working ? '' : ' u-hidden'}`}>
               <div className={results.length > 0 ? undefined : 'u-hidden'}>
+                <ResultsSummary results={results} />
                 <ResultsTable
                   results={results}
                   multiModel={models.length > 1}

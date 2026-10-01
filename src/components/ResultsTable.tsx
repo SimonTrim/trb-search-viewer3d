@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { IPaginationChangeEventDetail, ITableColumn, ModusWcTableCustomEvent } from '@trimble-oss/moduswebcomponents';
-import { ModusWcTable, ModusWcTypography } from '@trimble-oss/moduswebcomponents-react';
+import type {
+  IPaginationChangeEventDetail,
+  ISelectOption,
+  ITableColumn,
+  ModusWcTableCustomEvent,
+} from '@trimble-oss/moduswebcomponents';
+import { ModusWcSelect, ModusWcTable, ModusWcTypography } from '@trimble-oss/moduswebcomponents-react';
 
+import {
+  sortResults,
+  type ResultSortDirection,
+  type ResultSortField,
+} from '@/services/resultsService';
 import type { SearchResult } from '@/types';
+import { readInputString } from '@/utils/modusFormEvents';
 
 export interface ResultsTableProps {
   results: SearchResult[];
@@ -15,31 +26,52 @@ interface ResultRow extends Record<string, unknown> {
   key: number;
   name: string;
   ifcClass: string;
+  matchedValue: string;
   modelName: string;
 }
 
+const SORT_FIELD_OPTIONS: ISelectOption[] = [
+  { label: 'Nom', value: 'name' },
+  { label: 'Classification (type IFC)', value: 'ifcClass' },
+  { label: 'Valeur trouvée', value: 'matchedValue' },
+];
+
+const SORT_DIRECTION_OPTIONS: ISelectOption[] = [
+  { label: 'Croissant (A → Z)', value: 'asc' },
+  { label: 'Décroissant (Z → A)', value: 'desc' },
+];
+
 export function ResultsTable({ results, multiModel, onRowClick }: ResultsTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<ResultSortField>('name');
+  const [sortDirection, setSortDirection] = useState<ResultSortDirection>('asc');
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [results]);
+  }, [results, sortField, sortDirection]);
+
+  const sortedResults = useMemo(
+    () => sortResults(results, sortField, sortDirection),
+    [results, sortDirection, sortField],
+  );
 
   const rows = useMemo<ResultRow[]>(
     () =>
-      results.map((result, index) => ({
+      sortedResults.map((result, index) => ({
         key: index,
         name: result.name,
         ifcClass: result.ifcClass,
+        matchedValue: result.matchedValue,
         modelName: result.modelName ?? '',
       })),
-    [results],
+    [sortedResults],
   );
 
   const columns = useMemo<ITableColumn[]>(() => {
     const base: ITableColumn[] = [
       { id: 'name', accessor: 'name', header: 'Nom' },
-      { id: 'ifcClass', accessor: 'ifcClass', header: 'Type IFC' },
+      { id: 'ifcClass', accessor: 'ifcClass', header: 'Classification' },
+      { id: 'matchedValue', accessor: 'matchedValue', header: 'Valeur' },
     ];
     if (multiModel) {
       base.push({ id: 'modelName', accessor: 'modelName', header: 'Modèle' });
@@ -51,10 +83,10 @@ export function ResultsTable({ results, multiModel, onRowClick }: ResultsTablePr
     (event: CustomEvent<{ row: Record<string, unknown>; index: number }>) => {
       const key = event.detail?.row?.key;
       if (typeof key !== 'number') return;
-      const result = results[key];
+      const result = sortedResults[key];
       if (result) onRowClick(result);
     },
-    [onRowClick, results],
+    [onRowClick, sortedResults],
   );
 
   const handlePaginationChange = useCallback(
@@ -74,6 +106,30 @@ export function ResultsTable({ results, multiModel, onRowClick }: ResultsTablePr
         weight="semibold"
         label={`${results.length} élément(s) trouvé(s)`}
       />
+
+      <div className="results-table__sort">
+        <ModusWcSelect
+          className="results-table__sort-field"
+          label="Trier par"
+          size="sm"
+          value={sortField}
+          options={SORT_FIELD_OPTIONS}
+          onInputChange={(event: CustomEvent) =>
+            setSortField(readInputString(event) as ResultSortField)
+          }
+        />
+        <ModusWcSelect
+          className="results-table__sort-direction"
+          label="Ordre"
+          size="sm"
+          value={sortDirection}
+          options={SORT_DIRECTION_OPTIONS}
+          onInputChange={(event: CustomEvent) =>
+            setSortDirection(readInputString(event) as ResultSortDirection)
+          }
+        />
+      </div>
+
       <div className="results-table__grid">
         <ModusWcTable
           columns={columns}

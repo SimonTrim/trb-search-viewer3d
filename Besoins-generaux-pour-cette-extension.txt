@@ -1,0 +1,54 @@
+3.1.	Plugin n°1 : Recherche et filtrage des objets 
+Besoin métier 
+
+« En tant que chargé de projet côté maîtrise d'ouvrage, je veux pouvoir filtrer et trier les objets de la maquette selon leurs localisations, leurs classifications, leurs propriétés (thématique, catégorie, type d’objet, etc.) directement dans la vue 3D, afin de retrouver rapidement les éléments qui m'intéressent sans avoir à manipuler le Tableau de données. »
+
+IDFM, en tant que maître d'ouvrage, pilote des projets d'infrastructures de transport complexes — centre opérationnel bus, ligne de transport en site propre, pôles d'échanges multimodaux — impliquant de nombreux acteurs : maîtrises d’Œuvre, entreprises de travaux, collectivités, concessionnaires, exploitants... 
+
+Dans ce contexte, le chargé de projet IDFM doit pouvoir identifier rapidement, dans les maquettes remises par le Maître d'Œuvre, quels objets relèvent de quel gestionnaire, ou encore localiser un équipement spécifique pour en vérifier la bonne intégration, de comptabiliser le nombre d’équipements. Sans capacité de filtrage efficace, cette lecture de la maquette devient une tâche fastidieuse, dépendante d'une assistance technique tierce, alors que le chargé de projet devrait pouvoir exercer ce contrôle en autonomie, à tout moment du projet.
+
+Constats
+Pour l’heure, les possibilités de filtrage offerte par Trimble Connect figurent dans la fonctionnalité « Tableau de données ». Pour filtrer un élément, il convient : 
+1)	D’identifier au préalable, dans la visionneuse 3D, les paramètres portés par un des éléments à requêter ;
+2)	De sélectionner tous les paramètres utiles au filtre dans le tableau de données en sélectionnant la commande « Colonnes » ;
+3)	L’ajout des colonnes se fait dans une interface dédiée. Il faut être sensibilisé à l’usage des jeux de propriétés (PSET) pour trouver le(s) paramètre(s) à afficher ;
+4)	Lorsque le tableau est structuré selon son besoin, un mécanisme de regroupement est à mettre en place en glissant-déposant le ou les paramètres dans le champ « Grouper par ». Par exemple par classe IFC ;
+5)	Le tableau de données se met à jour en dynamique. Il faut sélectionner la ligne des groupes d’objets concernés par la sélection, puis la commande « Sélectionner 3D » pour qu’elles apparaissent en surbrillance dans la visionneuse 3D ;
+6)	Isoler ces éléments (masquer les autres éléments) pour ne garder dans la visionneuse et dans le tableau de données que les éléments filtrés.
+Il faut donc 6 étapes pour effectuer un filtre relativement simple sur la visionneuse. Cet enchaînement d’actions s’avère peu intuitif et chronophage pour le public cible. 
+
+Les fonctionnalités natives de Trimble Connect permettent donc de réaliser ces recherches mais nécessitent plusieurs manipulations successives dans le Tableau de données, impliquant une bonne compréhension préalable de la structure des propriétés IFC. 
+
+Cette approche présente donc plusieurs limites :
+•	Nombre important d'actions pour réaliser une recherche simple ;
+•	Faible intuitivité pour les utilisateurs occasionnels ;
+•	Dépendance à des ressources expertes BIM ;
+•	Difficulté à exploiter efficacement les maquettes lors des revues de projet.
+Illustration
+
+ 
+Figure 4: Filtre actuel dans Trimble Connect
+
+Valeur attendue
+
+Le chargé de projet gagne en autonomie, réduit les allers-retours avec les équipes de conception et diminue significativement le risque d'erreur lié à une mauvaise version de document.
+
+Ainsi, ce plugin doit permettre :
+•	D’accélérer l'accès à l'information contenue dans la maquette ;
+•	D’améliorer l'autonomie des chargés de projet ;
+•	De faciliter les contrôles réalisés par la maîtrise d'ouvrage ;
+•	De favoriser l'appropriation de la maquette numérique par des profils non spécialistes BIM ;
+•	De réduire les risques d'erreur liés à l'utilisation de documents externes ou de versions obsolètes
+Processus métier
+1)	Ouverture de la maquette numérique dans Trimble Connect ; 
+2)	Recherche d'un objet, d'une famille d'objets ou d'une propriété métier ; 
+3)	Filtrage des objets selon un ou plusieurs critères (type d'objet, thématique, catégorie, niveau, localisation, etc.) ; 
+4)	Visualisation, sélection ou isolement des objets correspondants dans la vue 3D ; 
+5)	Réalisation des analyses, contrôles ou vérifications attendus ; 
+6)	Modification des critères de recherche ou réinitialisation de l'affichage pour poursuivre l'analyse ; 
+7)	Exploitation des résultats sans recours systématique au Tableau de données ni à une expertise BIM spécifique.
+
+Priorité
+Élevée 
+Ce besoin a été identifié comme prioritaire lors des échanges avec les utilisateurs. Il constitue un prérequis à une exploitation efficace des maquettes numériques par les chargés de projet et conditionne en grande partie l'adoption de la plateforme par des profils non spécialistes BIM. Il contribue également à alimenter les besoins de pilotage et de calcul d'indicateurs en facilitant l'accès aux données contenues dans les maquettes.
+

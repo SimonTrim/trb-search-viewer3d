@@ -15,8 +15,9 @@ export interface SearchPropertyConfig {
 
 export const SEARCH_PROPERTIES: SearchPropertyConfig[] = [
   { id: 'name', label: 'Nom', kind: 'product', path: 'name' },
+  { id: 'description', label: 'Description', kind: 'product', path: 'description' },
   { id: 'objectType', label: "Type d'objet", kind: 'product', path: 'objectType' },
-  { id: 'ifcClass', label: 'Type IFC', kind: 'class' },
+  { id: 'ifcClass', label: 'Classification (type IFC)', kind: 'class' },
   {
     id: 'idfm_thematique',
     label: 'Thématique',
@@ -37,6 +38,27 @@ export const SEARCH_PROPERTIES: SearchPropertyConfig[] = [
     kind: 'propertySet',
     propertySet: propertySetsConfig.idfmIdentifiant.setName,
     propertyName: propertySetsConfig.idfmIdentifiant.properties.typeObjet,
+  },
+  {
+    id: 'idfm_localisation',
+    label: 'Localisation',
+    kind: 'propertySet',
+    propertySet: propertySetsConfig.idfmIdentifiant.setName,
+    propertyName: propertySetsConfig.idfmIdentifiant.properties.localisation,
+  },
+  {
+    id: 'idfm_niveau',
+    label: 'Niveau',
+    kind: 'propertySet',
+    propertySet: propertySetsConfig.idfmIdentifiant.setName,
+    propertyName: propertySetsConfig.idfmIdentifiant.properties.niveau,
+  },
+  {
+    id: 'idfm_gestionnaire',
+    label: 'Gestionnaire',
+    kind: 'propertySet',
+    propertySet: propertySetsConfig.idfmIdentifiant.setName,
+    propertyName: propertySetsConfig.idfmIdentifiant.properties.gestionnaire,
   },
 ];
 
@@ -67,6 +89,7 @@ export function resolveProperty(obj: ObjectProperties, propertyId: string): stri
   switch (definition.kind) {
     case 'product':
       if (definition.path === 'name') return obj.product?.name ?? obj.name ?? '';
+      if (definition.path === 'description') return obj.product?.description ?? '';
       if (definition.path === 'objectType') return obj.product?.objectType ?? '';
       return '';
     case 'class':
