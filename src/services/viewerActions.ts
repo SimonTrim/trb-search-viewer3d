@@ -106,3 +106,23 @@ export async function resetViewer(api: TrimbleAPI): Promise<void> {
   await api.viewer.setObjectState(undefined, { visible: 'reset', color: 'reset' });
   await api.viewer.setOpacity(100);
 }
+
+/**
+ * Réinitialise complètement le viewer : visibilité, couleurs, opacité,
+ * sélection 3D et vue (si l'API le permet).
+ */
+export async function resetExtensionView(api: TrimbleAPI): Promise<void> {
+  await resetViewer(api);
+
+  try {
+    await api.viewer.setSelection({ modelObjectIds: [] }, 'set');
+  } catch (selectionError) {
+    console.warn('[RechercheElements] Effacement de la sélection en échec:', selectionError);
+  }
+
+  try {
+    await api.viewer.reset();
+  } catch (resetError) {
+    console.warn('[RechercheElements] viewer.reset() non disponible:', resetError);
+  }
+}

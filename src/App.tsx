@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   ModusWcAlert,
+  ModusWcButton,
   ModusWcCard,
+  ModusWcIcon,
   ModusWcLoader,
   ModusWcTypography,
 } from '@trimble-oss/moduswebcomponents-react';
@@ -32,7 +34,7 @@ import { searchIndex, searchWithLazyIndex } from '@/services/searchService';
 import {
   HIGHLIGHT_WARN_THRESHOLD,
   highlightResults,
-  resetViewer,
+  resetExtensionView,
   zoomToResult,
 } from '@/services/viewerActions';
 import type { HierarchyFilter, SearchQuery, SearchResult, SearchStatus } from '@/types';
@@ -54,6 +56,7 @@ export default function App() {
   const [hasSearched, setHasSearched] = useState(false);
   const suppressViewerSyncRef = useRef(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [formSessionKey, setFormSessionKey] = useState(0);
   const [isolate, setIsolate] = useState(true);
   const isolateRef = useRef(isolate);
   isolateRef.current = isolate;
@@ -286,19 +289,37 @@ export default function App() {
     [api],
   );
 
-  const handleReset = useCallback(async () => {
-    if (!api) return;
-    try {
-      await resetViewer(api);
-      pushToast({
-        variant: 'info',
-        title: 'Vue réinitialisée',
-        message: 'Visibilité et couleurs restaurées.',
-      });
-    } catch (resetError) {
-      console.error('[RechercheElements] Réinitialisation impossible:', resetError);
+  const handleFullReset = useCallback(async () => {
+    if (status === 'indexing' || status === 'searching' || status === 'highlighting') return;
+
+    suppressViewerSyncRef.current = true;
+
+    if (api && !isMockMode) {
+      try {
+        await resetExtensionView(api);
+      } catch (resetError) {
+        console.error('[RechercheElements] Réinitialisation viewer impossible:', resetError);
+        pushToast({
+          variant: 'error',
+          title: 'Réinitialisation partielle',
+          message: 'Le viewer n\'a pas pu être entièrement restauré.',
+        });
+      }
     }
-  }, [api, pushToast]);
+
+    setResults([]);
+    setSelectedRowIds([]);
+    setHasSearched(false);
+    setStatus('idle');
+    setIndexProgress({ percent: 0, indexed: 0, total: 0, lazyMode: false });
+    setFormSessionKey((current) => current + 1);
+
+    pushToast({
+      variant: 'info',
+      title: 'Extension réinitialisée',
+      message: 'Vous pouvez lancer une nouvelle recherche avec d\'autres critères.',
+    });
+  }, [api, isMockMode, pushToast, status]);
 
   const working = status === 'indexing' || status === 'searching' || status === 'highlighting';
   const statusLabel =
@@ -315,7 +336,19 @@ export default function App() {
               est pilotée par la classe u-hidden (l'attribut hidden est manipulé par
               Stencil/Modus sur les enfants slottés et ne serait pas fiable). */}
           <header className="search-panel__header">
-            <ModusWcTypography hierarchy="h3" label="Recherche et filtrage d'éléments" />
+            <div className="search-panel__title-row">
+              <ModusWcTypography hierarchy="h3" label="Recherche et filtrage d'éléments" />
+              <ModusWcButton
+                variant="outlined"
+                color="secondary"
+                size="sm"
+                disabled={working || (!models.length && !isMockMode)}
+                onButtonClick={handleFullReset}
+              >
+                <ModusWcIcon name="refresh" size="xs" decorative slot="start" />
+                Réinitialiser
+              </ModusWcButton>
+            </div>
             <div className={isMockMode ? undefined : 'u-hidden'}>
               <ModusWcAlert variant="info" alertTitle="Mode développement">
                 {error ?? 'Workspace API non disponible — interface testable hors Trimble Connect.'}
@@ -330,12 +363,14 @@ export default function App() {
 
           <div className={isBusy ? 'u-hidden' : undefined}>
             <SearchBar
+              key={`search-${formSessionKey}`}
               onSearch={handleSearch}
               disabled={!models.length && !isMockMode}
               loading={working}
             />
 
             <FilterPanel
+              key={`filter-${formSessionKey}`}
               availableTypes={availableTypes}
               onApply={handleFilter}
               onScanTypes={handleScanTypes}
@@ -371,7 +406,6 @@ export default function App() {
                 <ViewerActionsBar
                   isolate={isolate}
                   onIsolateChange={setIsolate}
-                  onReset={handleReset}
                   disabled={working}
                 />
               </div>

@@ -49,6 +49,14 @@ body {
   margin-bottom: 12px;
 }
 
+.search-panel__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .search-panel__loading {
   display: grid;
   gap: 8px;

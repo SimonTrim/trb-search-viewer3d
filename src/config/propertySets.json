@@ -9,5 +9,20 @@
       "niveau": "NIVEAU",
       "gestionnaire": "GESTIONNAIRE"
     }
+  },
+  "revit": {
+    "properties": {
+      "family": ["Family", "Famille", "Family Name", "Nom de famille"],
+      "type": ["Type", "Type Name", "Nom du type", "Family and Type", "Famille et type"],
+      "category": ["Category", "Catégorie"],
+      "systemType": ["System Type", "Type de système"],
+      "systemName": ["System Name", "Nom du système"],
+      "systemClassification": ["System Classification", "Classification du système"],
+      "level": ["Level", "Niveau", "Base Level", "Niveau de base", "Niveau de référence"],
+      "mark": ["Mark", "Repère"],
+      "comments": ["Comments", "Commentaires"],
+      "workset": ["Workset", "Lot de travaux", "Workset Name", "Nom du lot de travaux"],
+      "phaseCreated": ["Phase Created", "Phase créée"]
+    }
   }
 }
