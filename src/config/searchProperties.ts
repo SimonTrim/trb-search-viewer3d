@@ -18,6 +18,11 @@ export interface SearchPropertyConfig {
 const idfmProperties = propertySetsConfig.idfm;
 const revitProperties = propertySetsConfig.revit.properties;
 
+/** Ancien identifiant conservé pour compatibilité des filtres déjà enregistrés. */
+const LEGACY_PROPERTY_ALIASES: Record<string, string> = {
+  idfm_type_objet: 'objectType',
+};
+
 export const SEARCH_PROPERTIES: SearchPropertyConfig[] = [
   { id: 'name', label: 'Nom', kind: 'product', path: 'name' },
   {
@@ -46,12 +51,6 @@ export const SEARCH_PROPERTIES: SearchPropertyConfig[] = [
     propertyAliases: idfmProperties.categorie,
   },
   {
-    id: 'idfm_type_objet',
-    label: 'Type objet (code IDFM)',
-    kind: 'propertyAnySet',
-    propertyAliases: idfmProperties.typeObjet,
-  },
-  {
     id: 'idfm_localisation',
     label: 'Localisation',
     kind: 'propertyAnySet',
@@ -65,7 +64,7 @@ export const SEARCH_PROPERTIES: SearchPropertyConfig[] = [
   },
   {
     id: 'idfm_gestionnaire',
-    label: 'Gestionnaire',
+    label: 'Unité fonctionnelle',
     kind: 'propertyAnySet',
     propertyAliases: idfmProperties.gestionnaire,
   },
@@ -152,8 +151,13 @@ export const DEFAULT_PROPERTY_ID = 'name';
 export const DEFAULT_LEVEL1_PROPERTY_ID = 'idfm_thematique';
 export const DEFAULT_MATCH_MODE: MatchMode = 'contains';
 
+export function normalizePropertyId(propertyId: string): string {
+  return LEGACY_PROPERTY_ALIASES[propertyId] ?? propertyId;
+}
+
 export function getPropertyLabel(propertyId: string): string {
-  return SEARCH_PROPERTIES.find((entry) => entry.id === propertyId)?.label ?? propertyId;
+  const normalizedId = normalizePropertyId(propertyId);
+  return SEARCH_PROPERTIES.find((entry) => entry.id === normalizedId)?.label ?? propertyId;
 }
 
 function normalizeSetName(value?: string): string {
@@ -193,7 +197,8 @@ function findPropertyByAliases(obj: ObjectProperties, aliases: string[]): string
 }
 
 export function resolveProperty(obj: ObjectProperties, propertyId: string): string {
-  const definition = SEARCH_PROPERTIES.find((entry) => entry.id === propertyId);
+  const normalizedId = normalizePropertyId(propertyId);
+  const definition = SEARCH_PROPERTIES.find((entry) => entry.id === normalizedId);
   if (!definition) return '';
 
   switch (definition.kind) {

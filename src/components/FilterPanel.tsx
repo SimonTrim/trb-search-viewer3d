@@ -11,13 +11,13 @@ import {
   ModusWcTypography,
 } from '@trimble-oss/moduswebcomponents-react';
 
+import { PropertyPicker } from '@/components/PropertyPicker';
 import {
   DEFAULT_LEVEL1_PROPERTY_ID,
   DEFAULT_MATCH_MODE,
   DEFAULT_PROPERTY_ID,
   getPropertyLabel,
   MATCH_MODE_OPTIONS,
-  PROPERTY_SELECT_OPTIONS,
 } from '@/config/searchProperties';
 import type { FilterRule, HierarchyFilter, MatchMode } from '@/types';
 import { readInputChecked, readInputString } from '@/utils/modusFormEvents';
@@ -131,16 +131,13 @@ export function FilterPanel({
           }
         >
           <div slot="content" className="filter-panel__section">
-            <ModusWcSelect
+            <PropertyPicker
               className="filter-panel__level1-property"
-              label="Propriété niveau 1"
-              size="sm"
-              value={level1PropertyId}
-              options={PROPERTY_SELECT_OPTIONS}
+              groupLabel="Famille niveau 1"
+              propertyLabel="Propriété niveau 1"
+              propertyId={level1PropertyId}
               disabled={disabled || loading}
-              onInputChange={(event: CustomEvent) =>
-                handleLevel1PropertyChange(readInputString(event))
-              }
+              onPropertyChange={handleLevel1PropertyChange}
             />
 
             <div className="filter-panel__scan">
@@ -224,16 +221,13 @@ export function FilterPanel({
             {rules.map((rule, index) => (
               <div key={index} className="filter-panel__rule">
                 <div className="filter-panel__rule-fields">
-                  <ModusWcSelect
+                  <PropertyPicker
                     className="filter-panel__rule-property"
-                    label={`Propriété ${index + 1}`}
-                    size="sm"
-                    value={rule.propertyId}
-                    options={PROPERTY_SELECT_OPTIONS}
+                    groupLabel={`Famille ${index + 1}`}
+                    propertyLabel={`Propriété ${index + 1}`}
+                    propertyId={rule.propertyId}
                     disabled={disabled || loading}
-                    onInputChange={(event: CustomEvent) =>
-                      updateRule(index, { propertyId: readInputString(event) })
-                    }
+                    onPropertyChange={(propertyId) => updateRule(index, { propertyId })}
                   />
                   <ModusWcSelect
                     className="filter-panel__rule-match"

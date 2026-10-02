@@ -21,13 +21,17 @@
       "CATEGORIE",
       "IDFM_CATEGORIE",
       "CODE_CATEGORIE",
-      "IDFM_CODE_CATEGORIE"
+      "IDFM_CODE_CATEGORIE",
+      "SGP-Nom categorie",
+      "SGP-Code categorie"
     ],
     "typeObjet": [
       "TYPE_OBJET",
       "IDFM_TYPE_OBJET",
       "CODE_TYPE_OBJET",
-      "IDFM_CODE_TYPE_OBJET"
+      "IDFM_CODE_TYPE_OBJET",
+      "SGP-Nom type objet",
+      "SGP-Code type objet"
     ],
     "localisation": [
       "REPERAGE",
@@ -36,6 +40,14 @@
       "IDFM_CODE_TYPE_LOCAL",
       "CODE_LOCAL",
       "IDFM_CODE_LOCAL",
+      "CODE_BATIMENT",
+      "IDFM_CODE_BATIMENT",
+      "CODE_SITE",
+      "IDFM_CODE_SITE",
+      "CODE_ZONE",
+      "IDFM_CODE_ZONE",
+      "CODE_VOIE",
+      "IDFM_CODE_VOIE",
       "Localisation"
     ],
     "niveau": [
@@ -57,6 +69,7 @@
       "Product Description",
       "Technical description",
       "Article description",
+      "Article Description",
       "item_description"
     ]
   },

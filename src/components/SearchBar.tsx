@@ -8,12 +8,8 @@ import {
   ModusWcTextInput,
 } from '@trimble-oss/moduswebcomponents-react';
 
-import {
-  DEFAULT_MATCH_MODE,
-  DEFAULT_PROPERTY_ID,
-  MATCH_MODE_OPTIONS,
-  PROPERTY_SELECT_OPTIONS,
-} from '@/config/searchProperties';
+import { PropertyPicker } from '@/components/PropertyPicker';
+import { DEFAULT_MATCH_MODE, DEFAULT_PROPERTY_ID, MATCH_MODE_OPTIONS } from '@/config/searchProperties';
 import type { MatchMode, SearchQuery } from '@/types';
 import { readInputChecked, readInputString } from '@/utils/modusFormEvents';
 
@@ -62,14 +58,14 @@ export function SearchBar({ onSearch, disabled = false, loading = false }: Searc
           onInputChange={(event: CustomEvent) => setText(readInputString(event))}
         />
 
-        <ModusWcSelect
+        <PropertyPicker
           className="search-bar__property"
-          label="Propriété"
-          size="sm"
-          value={propertyId}
-          options={PROPERTY_SELECT_OPTIONS}
+          groupLabel="Famille"
+          propertyLabel="Propriété"
+          propertyId={propertyId}
           disabled={disabled || loading}
-          onInputChange={(event: CustomEvent) => setPropertyId(readInputString(event))}
+          size="md"
+          onPropertyChange={setPropertyId}
         />
       </div>
 
