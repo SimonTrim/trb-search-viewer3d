@@ -11,58 +11,63 @@ export interface SearchPropertyConfig {
   path?: string;
   propertySet?: string;
   propertyName?: string;
-  /** Alias Revit FR/EN — recherche dans tous les jeux de propriétés. */
+  /** Alias ordonnés — premier alias non vide trouvé dans les PSET. */
   propertyAliases?: string[];
 }
 
+const idfmProperties = propertySetsConfig.idfm;
 const revitProperties = propertySetsConfig.revit.properties;
 
 export const SEARCH_PROPERTIES: SearchPropertyConfig[] = [
   { id: 'name', label: 'Nom', kind: 'product', path: 'name' },
-  { id: 'description', label: 'Description', kind: 'product', path: 'description' },
-  { id: 'objectType', label: "Type d'objet", kind: 'product', path: 'objectType' },
+  {
+    id: 'description',
+    label: 'Description',
+    kind: 'propertyAnySet',
+    propertyAliases: idfmProperties.description,
+  },
+  {
+    id: 'objectType',
+    label: "Type d'objet",
+    kind: 'propertyAnySet',
+    propertyAliases: [...idfmProperties.typeObjet, 'objectType'],
+  },
   { id: 'ifcClass', label: 'Classification (type IFC)', kind: 'class' },
   {
     id: 'idfm_thematique',
     label: 'Thématique',
-    kind: 'propertySet',
-    propertySet: propertySetsConfig.idfmIdentifiant.setName,
-    propertyName: propertySetsConfig.idfmIdentifiant.properties.thematique,
+    kind: 'propertyAnySet',
+    propertyAliases: idfmProperties.thematique,
   },
   {
     id: 'idfm_categorie',
     label: 'Catégorie',
-    kind: 'propertySet',
-    propertySet: propertySetsConfig.idfmIdentifiant.setName,
-    propertyName: propertySetsConfig.idfmIdentifiant.properties.categorie,
+    kind: 'propertyAnySet',
+    propertyAliases: idfmProperties.categorie,
   },
   {
     id: 'idfm_type_objet',
-    label: 'Type objet',
-    kind: 'propertySet',
-    propertySet: propertySetsConfig.idfmIdentifiant.setName,
-    propertyName: propertySetsConfig.idfmIdentifiant.properties.typeObjet,
+    label: 'Type objet (code IDFM)',
+    kind: 'propertyAnySet',
+    propertyAliases: idfmProperties.typeObjet,
   },
   {
     id: 'idfm_localisation',
     label: 'Localisation',
-    kind: 'propertySet',
-    propertySet: propertySetsConfig.idfmIdentifiant.setName,
-    propertyName: propertySetsConfig.idfmIdentifiant.properties.localisation,
+    kind: 'propertyAnySet',
+    propertyAliases: idfmProperties.localisation,
   },
   {
     id: 'idfm_niveau',
     label: 'Niveau',
-    kind: 'propertySet',
-    propertySet: propertySetsConfig.idfmIdentifiant.setName,
-    propertyName: propertySetsConfig.idfmIdentifiant.properties.niveau,
+    kind: 'propertyAnySet',
+    propertyAliases: idfmProperties.niveau,
   },
   {
     id: 'idfm_gestionnaire',
     label: 'Gestionnaire',
-    kind: 'propertySet',
-    propertySet: propertySetsConfig.idfmIdentifiant.setName,
-    propertyName: propertySetsConfig.idfmIdentifiant.properties.gestionnaire,
+    kind: 'propertyAnySet',
+    propertyAliases: idfmProperties.gestionnaire,
   },
   {
     id: 'revit_family',
@@ -144,30 +149,44 @@ export const MATCH_MODE_OPTIONS: ISelectOption[] = [
 ];
 
 export const DEFAULT_PROPERTY_ID = 'name';
-export const DEFAULT_LEVEL1_PROPERTY_ID = 'ifcClass';
+export const DEFAULT_LEVEL1_PROPERTY_ID = 'idfm_thematique';
 export const DEFAULT_MATCH_MODE: MatchMode = 'contains';
 
 export function getPropertyLabel(propertyId: string): string {
   return SEARCH_PROPERTIES.find((entry) => entry.id === propertyId)?.label ?? propertyId;
 }
 
+function normalizeSetName(value?: string): string {
+  return (value ?? '').trim();
+}
+
 function findInPropertySets(obj: ObjectProperties, setName: string, propName: string): string {
+  const normalizedSetName = normalizeSetName(setName);
   const set = obj.properties?.find(
-    (propertySet) => propertySet.set === setName || propertySet.name === setName,
+    (propertySet) =>
+      normalizeSetName(propertySet.set) === normalizedSetName ||
+      normalizeSetName(propertySet.name) === normalizedSetName,
   );
   const prop = set?.properties?.find((entry) => entry.name === propName);
-  return String(prop?.value ?? '');
+  return String(prop?.value ?? '').trim();
 }
 
 function findPropertyByAliases(obj: ObjectProperties, aliases: string[]): string {
-  const normalizedAliases = new Set(aliases.map((alias) => alias.toLowerCase()));
+  for (const alias of aliases) {
+    const normalizedAlias = alias.toLowerCase();
 
-  for (const propertySet of obj.properties ?? []) {
-    for (const property of propertySet.properties ?? []) {
-      if (normalizedAliases.has(property.name.toLowerCase())) {
-        return String(property.value ?? '');
+    for (const propertySet of obj.properties ?? []) {
+      for (const property of propertySet.properties ?? []) {
+        if (property.name.toLowerCase() !== normalizedAlias) continue;
+        const value = String(property.value ?? '').trim();
+        if (value) return value;
       }
     }
+  }
+
+  if (aliases.includes('objectType')) {
+    const objectType = String(obj.product?.objectType ?? '').trim();
+    if (objectType) return objectType;
   }
 
   return '';

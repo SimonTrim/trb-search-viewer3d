@@ -10,6 +10,56 @@
       "gestionnaire": "GESTIONNAIRE"
     }
   },
+  "idfm": {
+    "thematique": [
+      "THEMATIQUE",
+      "IDFM_THEMATIQUE",
+      "CODE_THEMATIQUE",
+      "IDFM_CODE_THEMATIQUE"
+    ],
+    "categorie": [
+      "CATEGORIE",
+      "IDFM_CATEGORIE",
+      "CODE_CATEGORIE",
+      "IDFM_CODE_CATEGORIE"
+    ],
+    "typeObjet": [
+      "TYPE_OBJET",
+      "IDFM_TYPE_OBJET",
+      "CODE_TYPE_OBJET",
+      "IDFM_CODE_TYPE_OBJET"
+    ],
+    "localisation": [
+      "REPERAGE",
+      "IDFM_REPERAGE",
+      "CODE_TYPE_LOCAL",
+      "IDFM_CODE_TYPE_LOCAL",
+      "CODE_LOCAL",
+      "IDFM_CODE_LOCAL",
+      "Localisation"
+    ],
+    "niveau": [
+      "CODE_NIVEAU",
+      "IDFM_CODE_NIVEAU",
+      "Niveau",
+      "Niveau de référence",
+      "Niveau de nomenclature"
+    ],
+    "gestionnaire": [
+      "GESTIONNAIRE",
+      "IDFM_GESTIONNAIRE",
+      "CODE_UNITE_FONCTIONNELLE",
+      "IDFM_CODE_UNITE_FONCTIONNELLE"
+    ],
+    "description": [
+      "IDFM_CATEGORIE_DESIGNATION",
+      "CATEGORIE_DESIGNATION",
+      "Product Description",
+      "Technical description",
+      "Article description",
+      "item_description"
+    ]
+  },
   "revit": {
     "properties": {
       "family": ["Family", "Famille", "Family Name", "Nom de famille"],
