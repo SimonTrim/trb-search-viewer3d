@@ -25,6 +25,10 @@ import {
 } from '@/services/filterService';
 import { getPropertyLabel } from '@/config/searchProperties';
 import {
+  buildPropertyCatalog,
+  downloadPropertyCatalog,
+} from '@/services/propertyCatalogService';
+import {
   buildIndex,
   clearIndex,
   countVisibleObjects,
@@ -42,7 +46,7 @@ import type { HierarchyFilter, SearchQuery, SearchResult, SearchStatus } from '@
 import { resultRowId, rowIdsFromViewerSelection } from '@/utils/selectionSync';
 
 export default function App() {
-  const { api, isBusy, isMockMode, models, selection, error } = useTrimbleConnect();
+  const { api, isBusy, isMockMode, models, project, selection, error } = useTrimbleConnect();
   const { toasts, pushToast, dismissToast } = useToasts();
 
   const [status, setStatus] = useState<SearchStatus>('idle');
@@ -141,6 +145,7 @@ export default function App() {
       options?: {
         scanOnly?: boolean;
         scanPropertyId?: string;
+        catalogExport?: boolean;
         lazyRunner?: () => Promise<SearchResult[]>;
       },
     ) => {
@@ -183,6 +188,25 @@ export default function App() {
           });
         };
 
+        const finishCatalogExport = (indexed: Awaited<ReturnType<typeof buildIndex>>) => {
+          const catalog = buildPropertyCatalog(indexed, models, project?.name);
+          downloadPropertyCatalog(catalog);
+          setStatus('idle');
+          pushToast({
+            variant: 'success',
+            title: 'Catalogue exporté',
+            message: `${catalog.totalObjects} objet(s), ${catalog.properties.length} propriété(s) distincte(s) téléchargée(s).`,
+          });
+        };
+
+        if (options?.catalogExport) {
+          const indexed = await buildIndex(api, models, (done, total) => {
+            reportIndexProgress(done, total, lazyMode);
+          });
+          finishCatalogExport(indexed);
+          return;
+        }
+
         if (lazyMode && options?.lazyRunner) {
           found = await options.lazyRunner();
           const indexed = getCachedIndex(models);
@@ -224,7 +248,7 @@ export default function App() {
         });
       }
     },
-    [api, applyFoundResults, isMockMode, models, pushToast, reportIndexProgress],
+    [api, applyFoundResults, isMockMode, models, project?.name, pushToast, reportIndexProgress],
   );
 
   const handleSearch = useCallback(
@@ -281,6 +305,10 @@ export default function App() {
     },
     [runWithIndex],
   );
+
+  const handleExportCatalog = useCallback(async () => {
+    await runWithIndex(() => [], { scanOnly: true, catalogExport: true });
+  }, [runWithIndex]);
 
   const handleRowClick = useCallback(
     async (result: SearchResult) => {
@@ -350,16 +378,28 @@ export default function App() {
           <header className="search-panel__header">
             <div className="search-panel__title-row">
               <ModusWcTypography hierarchy="h3" label="Recherche et filtrage d'éléments" />
-              <ModusWcButton
-                variant="outlined"
-                color="secondary"
-                size="sm"
-                disabled={working || (!models.length && !isMockMode)}
-                onButtonClick={handleFullReset}
-              >
-                <ModusWcIcon name="refresh" size="xs" decorative slot="start" />
-                Réinitialiser
-              </ModusWcButton>
+              <div className="search-panel__header-actions">
+                <ModusWcButton
+                  variant="outlined"
+                  color="secondary"
+                  size="sm"
+                  disabled={working || (!models.length && !isMockMode)}
+                  onButtonClick={handleExportCatalog}
+                >
+                  <ModusWcIcon name="download" size="xs" decorative slot="start" />
+                  Exporter les propriétés
+                </ModusWcButton>
+                <ModusWcButton
+                  variant="outlined"
+                  color="secondary"
+                  size="sm"
+                  disabled={working || (!models.length && !isMockMode)}
+                  onButtonClick={handleFullReset}
+                >
+                  <ModusWcIcon name="refresh" size="xs" decorative slot="start" />
+                  Réinitialiser
+                </ModusWcButton>
+              </div>
             </div>
             <div className={isMockMode ? undefined : 'u-hidden'}>
               <ModusWcAlert variant="info" alertTitle="Mode développement">
